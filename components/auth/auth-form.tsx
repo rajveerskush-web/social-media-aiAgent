@@ -25,21 +25,25 @@ export function AuthForm({ mode, authError }: AuthFormProps) {
     setError("");
     setBusy(true);
 
-    const formData = new FormData(event.currentTarget);
-    const result = isSignUp
-      ? await signUpWithEmail(formData)
-      : await signInWithEmail(formData);
+    try {
+      const formData = new FormData(event.currentTarget);
+      const result = isSignUp
+        ? await signUpWithEmail(formData)
+        : await signInWithEmail(formData);
 
-    if (result?.verificationRequired) {
-      setVerification({
-        email: String(formData.get("email") ?? "").trim(),
-      });
+      if (result?.verificationRequired) {
+        setVerification({
+          email: String(formData.get("email") ?? "").trim(),
+        });
+        return;
+      }
+
+      if (result?.error) setError(result.error);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
       setBusy(false);
-      return;
     }
-
-    if (result?.error) setError(result.error);
-    setBusy(false);
   }
 
   async function handleVerification(event: FormEvent<HTMLFormElement>) {
@@ -48,12 +52,17 @@ export function AuthForm({ mode, authError }: AuthFormProps) {
 
     setError("");
     setBusy(true);
-    const formData = new FormData(event.currentTarget);
-    formData.set("email", verification.email);
-    const result = await verifySignUpEmail(formData);
+    try {
+      const formData = new FormData(event.currentTarget);
+      formData.set("email", verification.email);
+      const result = await verifySignUpEmail(formData);
 
-    if (result?.error) setError(result.error);
-    setBusy(false);
+      if (result?.error) setError(result.error);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
