@@ -1,4 +1,4 @@
-import { customType, integer, pgTable, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { customType, index, integer, pgTable, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
@@ -26,7 +26,6 @@ export const campaign = pgTable("campaign", {
   id: serial("id").primaryKey(),
   authUserId: uuid("auth_user_id")
     .notNull()
-    .unique()
     .references(() => users.authUserId, { onDelete: "cascade" }),
   name: text("name").notNull(),
   iconKey: text("icon_key"),
@@ -34,7 +33,7 @@ export const campaign = pgTable("campaign", {
   iconImageMime: text("icon_image_mime"),
   officeImage: text("office_image").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [index("campaign_auth_user_id_idx").on(table.authUserId)]);
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

@@ -5,30 +5,17 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Bell,
-  Bot,
-  Calendar,
   Check,
-  ChevronDown,
   Clock,
   FilePlus2,
   FileText,
-  Flame,
-  LayoutDashboard,
   Link2,
-  LogOut,
-  Plus,
-  Rocket,
   Search,
   Send,
-  Settings,
-  Share2,
   Sparkles,
-  Target,
-  BrainCircuit,
-  Building2,
   Info,
 } from "lucide-react";
-import { signOut } from "@/app/actions/auth";
+import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 
 type DashboardProps = {
   user: {
@@ -38,11 +25,18 @@ type DashboardProps = {
     } | null;
   };
   storedCampaign: {
+    id: number;
     name: string;
     iconKey?: string | null;
     iconImage?: string | null;
     officeImage?: string | null;
   };
+  campaigns: Array<{
+    id: number;
+    name: string;
+    iconKey?: string | null;
+    iconImage?: string | null;
+  }>;
   storedProfile?: {
     id: number;
     name?: string | null;
@@ -66,38 +60,19 @@ type DashboardProps = {
 export function SociafyDashboard({
   user,
   storedCampaign,
+  campaigns,
   storedProfile,
   recentContent,
   recentContentCount,
   contentReadError,
   selectedOffice,
 }: DashboardProps) {
-  const [activeNav, setActiveNav] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showCampaignDropdown, setShowCampaignDropdown] = useState(false);
   const [showContentModal, setShowContentModal] = useState(false);
 
   const displayName =
     storedProfile?.name?.trim() || user.profile?.name?.trim() || user.email;
   const firstName = displayName.split(/[\s@]/)[0] || "there";
-
-  const CampaignIcon =
-    storedCampaign.iconKey === "rocket"
-      ? Rocket
-      : storedCampaign.iconKey === "target"
-      ? Target
-      : storedCampaign.iconKey === "brain"
-      ? BrainCircuit
-      : Flame;
-
-  const navigationItems = [
-    { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "content", label: "Content", icon: FileText, soon: true },
-    { id: "calendar", label: "Calendar", icon: Calendar, soon: true },
-    { id: "ai-agents", label: "AI Agents", icon: Bot, soon: true },
-    { id: "analytics", label: "Analytics", icon: Sparkles, soon: true },
-    { id: "settings", label: "Settings", icon: Settings, soon: true },
-  ];
 
   // Exactly three primary metric cards
   const metricCards = [
@@ -131,139 +106,14 @@ export function SociafyDashboard({
   ];
 
   // Campaign checklist progress
-  const hasPosts = recentContentCount > 0;
-  const completedSteps = hasPosts ? 2 : 1;
+  const hasSavedContent = recentContentCount > 0;
+  const completedSteps = hasSavedContent ? 2 : 1;
   const progressPercent = Math.round((completedSteps / 3) * 100);
 
   return (
     <div className="soto-layout">
       {/* ===================== 2. SIDEBAR ===================== */}
-      <aside className="soto-sidebar">
-        {/* Brand */}
-        <div className="soto-brand-header">
-          <Link href="/" className="soto-brand-link" aria-label="SOTO AI home">
-            <span className="soto-brand-logo-mark">
-              <Sparkles size={16} />
-            </span>
-            <span className="soto-brand-text">
-              SOTO<span className="soto-brand-ai"> AI</span>
-            </span>
-          </Link>
-        </div>
-
-        {/* Current Campaign Card */}
-        <div className="soto-campaign-card-wrap">
-          <div
-            className="soto-campaign-card"
-            onClick={() => setShowCampaignDropdown(!showCampaignDropdown)}
-            role="button"
-            tabIndex={0}
-            aria-label="Current campaign switcher"
-          >
-            <span className="soto-campaign-icon-badge">
-              {storedCampaign.iconImage ? (
-                <Image
-                  src={storedCampaign.iconImage}
-                  alt=""
-                  width={16}
-                  height={16}
-                  unoptimized
-                />
-              ) : (
-                <CampaignIcon size={15} />
-              )}
-            </span>
-            <div className="soto-campaign-details">
-              <span className="soto-campaign-label">CAMPAIGN</span>
-              <strong className="soto-campaign-name">
-                {storedCampaign.name}
-              </strong>
-            </div>
-            <ChevronDown
-              size={14}
-              className={`soto-campaign-chevron ${showCampaignDropdown ? "is-open" : ""}`}
-            />
-          </div>
-
-          {/* Campaign dropdown */}
-          {showCampaignDropdown && (
-            <div className="soto-campaign-dropdown">
-              <div className="soto-campaign-dropdown-info">
-                <small>Current Campaign</small>
-                <strong>{storedCampaign.name}</strong>
-              </div>
-              <div className="soto-dropdown-separator" />
-              <Link
-                href="/create-campaign"
-                className="soto-dropdown-link"
-              >
-                <Plus size={14} /> Create new campaign
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCampaignDropdown(false);
-                  setShowContentModal(true);
-                }}
-                className="soto-dropdown-link"
-              >
-                <Building2 size={14} /> View office & assets
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Section Label: WORKSPACE */}
-        <span className="soto-sidebar-section-label">WORKSPACE</span>
-
-        {/* Navigation list */}
-        <nav className="soto-nav-list" aria-label="Workspace navigation">
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeNav === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setActiveNav(item.id);
-                  if (item.id === "content") setShowContentModal(true);
-                }}
-                className={`soto-nav-item ${isActive ? "is-active" : ""}`}
-              >
-                <span className="soto-nav-icon">
-                  <Icon size={16} strokeWidth={isActive ? 2.2 : 1.75} />
-                </span>
-                <span className="soto-nav-text">{item.label}</span>
-                {item.soon && <span className="soto-nav-soon-badge">Soon</span>}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* User profile & sign-out aligned at bottom */}
-        <div className="soto-sidebar-footer">
-          <div className="soto-user-profile-strip">
-            <div className="soto-user-avatar">
-              {firstName.slice(0, 1).toUpperCase()}
-            </div>
-            <div className="soto-user-meta">
-              <strong className="soto-user-display-name">{displayName}</strong>
-              <small className="soto-user-email">{user.email}</small>
-            </div>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="soto-signout-btn"
-                aria-label="Sign out"
-                title="Sign out"
-              >
-                <LogOut size={15} />
-              </button>
-            </form>
-          </div>
-        </div>
-      </aside>
+      <DashboardSidebar user={user} storedCampaign={storedCampaign} campaigns={campaigns} profileName={storedProfile?.name} />
 
       {/* ===================== MAIN CONTENT WRAPPER ===================== */}
       <div className="soto-main-wrapper">
@@ -436,12 +286,12 @@ export function SociafyDashboard({
 
               {/* Step 3: Generate your first post */}
               <div
-                className={`soto-checklist-row ${hasPosts ? "is-complete" : ""}`}
+                className={`soto-checklist-row ${hasSavedContent ? "is-complete" : ""}`}
               >
                 <div
-                  className={`soto-step-status-icon ${hasPosts ? "is-done" : ""}`}
+                  className={`soto-step-status-icon ${hasSavedContent ? "is-done" : ""}`}
                 >
-                  {hasPosts ? (
+                  {hasSavedContent ? (
                     <Check size={14} strokeWidth={2.5} />
                   ) : (
                     <Sparkles size={14} />
@@ -449,15 +299,15 @@ export function SociafyDashboard({
                 </div>
                 <div className="soto-step-copy">
                   <strong className="soto-step-name">
-                    Generate your first post
+                    Save your first post
                   </strong>
                   <span className="soto-step-note">
-                    {hasPosts
-                      ? `${recentContentCount} post${recentContentCount === 1 ? "" : "s"} saved in workspace`
-                      : "Create and publish campaign content with AI agents"}
+                    {hasSavedContent
+                      ? `${recentContentCount} saved post${recentContentCount === 1 ? "" : "s"} on your account`
+                      : "Create and save content to your workspace"}
                   </span>
                 </div>
-                {hasPosts ? (
+                {hasSavedContent ? (
                   <span className="soto-step-badge is-done">Completed</span>
                 ) : (
                   <button
@@ -476,9 +326,9 @@ export function SociafyDashboard({
           <section className="soto-recent-content-card" aria-label="Recent content">
             <div className="soto-recent-content-header">
               <div>
-                <h3 className="soto-panel-title">Recent campaign content</h3>
+                <h3 className="soto-panel-title">Recent saved content</h3>
                 <p className="soto-panel-subtitle">
-                  Saved posts and content drafted for {storedCampaign.name}
+                  Posts saved to your account
                 </p>
               </div>
               <button
@@ -520,10 +370,7 @@ export function SociafyDashboard({
               <div className="soto-compact-empty">
                 <FileText size={22} className="soto-empty-glyph" />
                 <strong>No content created yet</strong>
-                <p>
-                  Your saved campaign posts will appear here once generated by your
-                  AI team.
-                </p>
+                <p>Saved posts will appear here once they are available in your workspace.</p>
               </div>
             )}
           </section>
@@ -550,9 +397,9 @@ export function SociafyDashboard({
           >
             <div className="soto-modal-top">
               <div>
-                <h3 className="soto-modal-heading">Campaign Workspace</h3>
+                <h3 className="soto-modal-heading">Campaign and workspace</h3>
                 <p className="soto-modal-sub">
-                  {storedCampaign.name} — Office & stored content
+                  {storedCampaign.name} — campaign office and account content
                 </p>
               </div>
               <button
@@ -592,7 +439,7 @@ export function SociafyDashboard({
               )}
 
               <h4 className="soto-modal-section-h4">
-                Saved Content in Neon DB ({recentContentCount})
+                Saved account content ({recentContentCount})
               </h4>
               {recentContent.length > 0 ? (
                 <div className="soto-modal-posts-list">

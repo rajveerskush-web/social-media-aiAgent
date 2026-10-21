@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, getAuthenticatedUserCampaign, getAuthenticatedUserProfile } from "@/lib/insforge/server";
+import { getAuthenticatedUser, getAuthenticatedUserCampaign, getAuthenticatedUserCampaigns, getAuthenticatedUserProfile } from "@/lib/insforge/server";
 import { officeOptions } from "@/lib/campaign-options";
 import { getDb, posts } from "@/db";
 import { count, desc, eq } from "drizzle-orm";
@@ -15,6 +15,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const storedCampaign = await getAuthenticatedUserCampaign();
   if (!storedCampaign) redirect("/create-campaign");
+  const campaigns = await getAuthenticatedUserCampaigns();
   const storedProfile = await getAuthenticatedUserProfile();
   const { items: recentContent, count: recentContentCount, error: contentReadError } = await getRecentContent(storedProfile?.id);
   const selectedOffice = officeOptions.find((office) => office.id === storedCampaign.officeImage);
@@ -23,6 +24,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <SociafyDashboard
       user={user}
       storedCampaign={storedCampaign}
+      campaigns={campaigns}
       storedProfile={storedProfile}
       recentContent={recentContent}
       recentContentCount={recentContentCount}
