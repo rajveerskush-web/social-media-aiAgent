@@ -1,5 +1,5 @@
 import { AuthForm } from "@/components/auth/auth-form";
-import { getAuthenticatedUser } from "@/lib/insforge/server";
+import { getAuthenticatedUser, getAuthenticatedUserCampaign } from "@/lib/insforge/server";
 import { redirect } from "next/navigation";
 
 type SignInPageProps = {
@@ -8,7 +8,7 @@ type SignInPageProps = {
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const user = await getAuthenticatedUser();
-  if (user) redirect("/dashboard");
+  if (user) redirect((await getAuthenticatedUserCampaign()) ? "/dashboard" : "/create-campaign");
 
   const { error } = await searchParams;
   const authError = error === "google"
@@ -17,3 +17,4 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   return <AuthForm mode="sign-in" authError={authError} />;
 }
+

@@ -3,7 +3,7 @@
 import { createAuthActions } from "@insforge/sdk/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createInsForgeServerClient, persistAuthenticatedUserProfile } from "@/lib/insforge/server";
+import { createInsForgeServerClient, getAuthenticatedCampaignDestination, persistAuthenticatedUserProfile } from "@/lib/insforge/server";
 
 type AuthActionResult = {
   error?: string;
@@ -28,8 +28,9 @@ export async function signInWithEmail(formData: FormData): Promise<AuthActionRes
     return { error: error?.message ?? "We couldn’t sign you in. Please try again." };
   }
 
-  const profile = await persistAuthenticatedUserProfile(await createInsForgeServerClient());
-  redirect(profile.error ? "/dashboard?profile=pending" : "/dashboard");
+  const insforge = await createInsForgeServerClient();
+  await persistAuthenticatedUserProfile(insforge);
+  redirect(await getAuthenticatedCampaignDestination(insforge));
 }
 
 export async function signUpWithEmail(formData: FormData): Promise<AuthActionResult> {
@@ -50,8 +51,9 @@ export async function signUpWithEmail(formData: FormData): Promise<AuthActionRes
   if (data?.requireEmailVerification) return { verificationRequired: true };
   if (!data?.user) return { error: "We couldn’t finish creating your account. Please try again." };
 
-  const profile = await persistAuthenticatedUserProfile(await createInsForgeServerClient(), name);
-  redirect(profile.error ? "/dashboard?profile=pending" : "/dashboard");
+  const insforge = await createInsForgeServerClient();
+  await persistAuthenticatedUserProfile(insforge, name);
+  redirect(await getAuthenticatedCampaignDestination(insforge));
 }
 
 export async function verifySignUpEmail(formData: FormData): Promise<AuthActionResult> {
@@ -69,8 +71,9 @@ export async function verifySignUpEmail(formData: FormData): Promise<AuthActionR
     return { error: error?.message ?? "We couldn’t verify that code. Please check it and try again." };
   }
 
-  const profile = await persistAuthenticatedUserProfile(await createInsForgeServerClient());
-  redirect(profile.error ? "/dashboard?profile=pending" : "/dashboard");
+  const insforge = await createInsForgeServerClient();
+  await persistAuthenticatedUserProfile(insforge);
+  redirect(await getAuthenticatedCampaignDestination(insforge));
 }
 
 export async function startGoogleSignIn() {

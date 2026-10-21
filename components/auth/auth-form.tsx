@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { ArrowUpRight, Check, Sparkles } from "lucide-react";
+import { officeOptions } from "@/lib/campaign-options";
 import {
   signInWithEmail,
   signUpWithEmail,
@@ -19,6 +22,7 @@ export function AuthForm({ mode, authError }: AuthFormProps) {
   const [busy, setBusy] = useState(false);
   const [verification, setVerification] = useState<{ email: string } | null>(null);
   const isSignUp = mode === "sign-up";
+  const featuredOffice = officeOptions[0];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,13 +62,28 @@ export function AuthForm({ mode, authError }: AuthFormProps) {
 
   return (
     <main className="auth-shell">
-      <div className="auth-glow auth-glow-one" />
-      <div className="auth-glow auth-glow-two" />
-      <Link href="/" className="auth-brand" aria-label="SOTO home">
-        <span className="auth-brand-mark">S</span>
-        <span>SOTO</span>
-      </Link>
+      <section className="auth-showcase">
+        <Link href="/" className="auth-brand" aria-label="SOTO home">
+          <span className="auth-brand-mark">S</span><span>SOTO</span>
+        </Link>
+        <div className="auth-showcase-copy">
+          <span className="auth-showcase-kicker"><Sparkles size={14} /> A LITTLE SPACE FOR BIG IDEAS</span>
+          <h2>Your next campaign<br />starts <em>with a spark.</em></h2>
+          <p>Build a workspace around your idea, give it an office, and return whenever inspiration strikes.</p>
+        </div>
+        <div className="auth-showcase-image">
+          <Image src={featuredOffice.image} alt="The SOTO creative studio office" fill sizes="(max-width: 760px) 100vw, 50vw" priority />
+          <div className="auth-image-scrim" />
+          <span className="auth-image-label"><span className="auth-image-check"><Check size={12} /></span> A workspace that feels like yours</span>
+        </div>
+        <div className="auth-showcase-footer"><span>Thoughtfully built for your next move.</span><span>01 / 02</span></div>
+      </section>
 
+      <section className="auth-pane">
+        <div className="auth-pane-top">
+          <span>{isSignUp ? "GET STARTED WITH SOTO" : "WELCOME BACK TO SOTO"}</span>
+          <Link href="/" aria-label="Back to SOTO home"><ArrowUpRight size={17} /></Link>
+        </div>
       <section className="auth-card" aria-labelledby="auth-title">
         {verification ? (
           <>
@@ -166,8 +185,8 @@ export function AuthForm({ mode, authError }: AuthFormProps) {
           </>
         )}
       </section>
-
-      <p className="auth-footer">Secure sign-in powered by InsForge</p>
+      <p className="auth-footer"><span className="auth-footer-dot" /> Secure sign-in powered by InsForge</p>
+      </section>
     </main>
   );
 }
