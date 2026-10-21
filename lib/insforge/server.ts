@@ -1,6 +1,7 @@
+import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@insforge/sdk/ssr";
-import { getDb, users } from "@/db";
+import { campaign, getDb, users } from "@/db";
 import { eq } from "drizzle-orm";
 
 export async function createInsForgeServerClient() {
@@ -31,6 +32,44 @@ export async function getAuthenticatedUserProfile() {
   } catch {
     return null;
   }
+}
+
+/** Read the signed-in user's campaign using the verified InsForge session identity. */
+export async function getAuthenticatedUserCampaign() {
+  const insforge = await createInsForgeServerClient();
+  const { data, error } = await insforge.auth.getCurrentUser();
+  const user = data?.user;
+  if (error || !user?.id) return null;
+
+  return getCampaignForAuthUser(user.id);
+}
+
+/** Internal lookup; callers must pass an ID returned by InsForge Auth. */
+export async function getCampaignForAuthUser(authUserId: string) {
+  try {
+    const [storedCampaign] = await getDb()
+      .select()
+      .from(campaign)
+      .where(eq(campaign.authUserId, authUserId))
+      .limit(1);
+    if (!storedCampaign) return null;
+    const iconImage = storedCampaign.iconImage && storedCampaign.iconImageMime
+      ? `data:${storedCampaign.iconImageMime};base64,${storedCampaign.iconImage.toString("base64")}`
+      : null;
+    return { ...storedCampaign, iconImage };
+  } catch {
+    return null;
+  }
+}
+
+/** Choose the post-auth destination without accepting identity from the client. */
+export async function getAuthenticatedCampaignDestination(
+  insforge: Awaited<ReturnType<typeof createInsForgeServerClient>>,
+) {
+  const { data, error } = await insforge.auth.getCurrentUser();
+  const user = data?.user;
+  if (error || !user?.id) return "/sign-in";
+  return (await getCampaignForAuthUser(user.id)) ? "/dashboard" : "/create-campaign";
 }
 
 /** Persist a Neon profile only for the user in the verified InsForge server session. */

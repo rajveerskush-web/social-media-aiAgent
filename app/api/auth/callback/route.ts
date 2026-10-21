@@ -1,7 +1,7 @@
 import { createAuthActions, createServerClient, getAccessTokenCookieName } from "@insforge/sdk/ssr";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { persistAuthenticatedUserProfile } from "@/lib/insforge/server";
+import { getAuthenticatedCampaignDestination, persistAuthenticatedUserProfile } from "@/lib/insforge/server";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("insforge_code");
@@ -29,10 +29,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/sign-in?error=google", request.url));
   }
   const insforge = createServerClient({ accessToken });
-  const profile = await persistAuthenticatedUserProfile(insforge);
+  await persistAuthenticatedUserProfile(insforge);
+  const destination = await getAuthenticatedCampaignDestination(insforge);
   response.cookies.delete("insforge_code_verifier");
-  if (profile.error) {
-    response.headers.set("Location", new URL("/dashboard?profile=pending", request.url).toString());
-  }
+  response.headers.set("Location", new URL(destination, request.url).toString());
   return response;
 }

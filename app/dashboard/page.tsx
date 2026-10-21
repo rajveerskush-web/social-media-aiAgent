@@ -1,7 +1,9 @@
-import { signOut } from "@/app/actions/auth";
-import { getAuthenticatedUser, getAuthenticatedUserProfile } from "@/lib/insforge/server";
-import Link from "next/link";
+import { getAuthenticatedUser, getAuthenticatedUserCampaign, getAuthenticatedUserProfile } from "@/lib/insforge/server";
+import { officeOptions } from "@/lib/campaign-options";
+import { getDb, posts } from "@/db";
+import { count, desc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { SociafyDashboard } from "@/components/dashboard/soto-dashboard";
 
 type DashboardPageProps = {
   searchParams: Promise<{ profile?: string }>;
@@ -11,35 +13,41 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const user = await getAuthenticatedUser();
   if (!user) redirect("/sign-in");
 
-  const { profile } = await searchParams;
+  const storedCampaign = await getAuthenticatedUserCampaign();
+  if (!storedCampaign) redirect("/create-campaign");
   const storedProfile = await getAuthenticatedUserProfile();
-  const displayName = storedProfile?.name?.trim() || user.profile?.name?.trim() || user.email;
+  const { items: recentContent, count: recentContentCount, error: contentReadError } = await getRecentContent(storedProfile?.id);
+  const selectedOffice = officeOptions.find((office) => office.id === storedCampaign.officeImage);
 
   return (
-    <main className="dashboard-shell">
-      <header className="dashboard-header">
-        <Link className="auth-brand" href="/">
-          <span className="auth-brand-mark">S</span>
-          <span>SOTO</span>
-        </Link>
-        <form action={signOut}>
-          <button className="dashboard-signout" type="submit">Sign out</button>
-        </form>
-      </header>
-      <section className="dashboard-content">
-        <span className="auth-eyebrow">Your workspace</span>
-        <h1>Welcome, {displayName}</h1>
-        <p>You’re signed in as {user.email}. Your account is ready.</p>
-        {(profile === "pending" || !storedProfile) && (
-          <p role="status">
-            You are signed in, but your SOTO profile could not be saved yet. Profile saving will retry on your next sign-in.
-          </p>
-        )}
-        <div className="dashboard-panel">
-          <span className="dashboard-status-dot" />
-          <span>Authenticated with InsForge</span>
-        </div>
-      </section>
-    </main>
+    <SociafyDashboard
+      user={user}
+      storedCampaign={storedCampaign}
+      storedProfile={storedProfile}
+      recentContent={recentContent}
+      recentContentCount={recentContentCount}
+      contentReadError={contentReadError}
+      selectedOffice={selectedOffice}
+    />
   );
+}
+
+async function getRecentContent(authorId?: number) {
+  const empty = { items: [] as Array<{ id: number; title: string; content: string | null; createdAt: Date }>, count: 0, error: false };
+  if (!authorId) return empty;
+
+  try {
+    const db = getDb();
+    const [items, [total]] = await Promise.all([
+      db.select({ id: posts.id, title: posts.title, content: posts.content, createdAt: posts.createdAt })
+        .from(posts)
+        .where(eq(posts.authorId, authorId))
+        .orderBy(desc(posts.createdAt))
+        .limit(6),
+      db.select({ total: count() }).from(posts).where(eq(posts.authorId, authorId)),
+    ]);
+    return { items, count: total.total, error: false };
+  } catch {
+    return { ...empty, error: true };
+  }
 }
