@@ -2,7 +2,8 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@insforge/sdk/ssr";
 import { campaign, getDb, users } from "@/db";
-import { eq } from "drizzle-orm";
+import { CURRENT_CAMPAIGN_COOKIE } from "@/lib/campaign-selection";
+import { asc, eq } from "drizzle-orm";
 
 export async function createInsForgeServerClient() {
   return createServerClient({ cookies: await cookies() });
@@ -34,31 +35,46 @@ export async function getAuthenticatedUserProfile() {
   }
 }
 
-/** Read the signed-in user's campaign using the verified InsForge session identity. */
+/** Read all campaigns owned by the verified InsForge session identity. */
+export async function getAuthenticatedUserCampaigns() {
+  const insforge = await createInsForgeServerClient();
+  const { data, error } = await insforge.auth.getCurrentUser();
+  const user = data?.user;
+  if (error || !user?.id) return [];
+
+  return getCampaignsForAuthUser(user.id);
+}
+
+/** Resolve the selection only among campaigns owned by the verified user. */
 export async function getAuthenticatedUserCampaign() {
   const insforge = await createInsForgeServerClient();
   const { data, error } = await insforge.auth.getCurrentUser();
   const user = data?.user;
   if (error || !user?.id) return null;
 
-  return getCampaignForAuthUser(user.id);
+  const ownedCampaigns = await getCampaignsForAuthUser(user.id);
+  if (ownedCampaigns.length === 0) return null;
+
+  const requestedId = Number((await cookies()).get(CURRENT_CAMPAIGN_COOKIE)?.value);
+  return ownedCampaigns.find((item) => item.id === requestedId) ?? ownedCampaigns[0];
 }
 
 /** Internal lookup; callers must pass an ID returned by InsForge Auth. */
-export async function getCampaignForAuthUser(authUserId: string) {
+async function getCampaignsForAuthUser(authUserId: string) {
   try {
-    const [storedCampaign] = await getDb()
+    const storedCampaigns = await getDb()
       .select()
       .from(campaign)
       .where(eq(campaign.authUserId, authUserId))
-      .limit(1);
-    if (!storedCampaign) return null;
-    const iconImage = storedCampaign.iconImage && storedCampaign.iconImageMime
-      ? `data:${storedCampaign.iconImageMime};base64,${storedCampaign.iconImage.toString("base64")}`
-      : null;
-    return { ...storedCampaign, iconImage };
+      .orderBy(asc(campaign.createdAt), asc(campaign.id));
+    return storedCampaigns.map((storedCampaign) => ({
+      ...storedCampaign,
+      iconImage: storedCampaign.iconImage && storedCampaign.iconImageMime
+        ? `data:${storedCampaign.iconImageMime};base64,${storedCampaign.iconImage.toString("base64")}`
+        : null,
+    }));
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -69,7 +85,7 @@ export async function getAuthenticatedCampaignDestination(
   const { data, error } = await insforge.auth.getCurrentUser();
   const user = data?.user;
   if (error || !user?.id) return "/sign-in";
-  return (await getCampaignForAuthUser(user.id)) ? "/dashboard" : "/create-campaign";
+  return (await getCampaignsForAuthUser(user.id)).length > 0 ? "/dashboard" : "/create-campaign";
 }
 
 /** Persist a Neon profile only for the user in the verified InsForge server session. */

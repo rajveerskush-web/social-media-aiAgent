@@ -42,7 +42,7 @@
 .soto-layout {
   display: flex;
   min-height: 100vh;
-  background-color: var(--soto-bg);
+  background-color: #f5f6f8;
   color: var(--soto-text-primary);
   font-family: var(--font-sans), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -52,29 +52,41 @@
    2. SIDEBAR
    ======================================================================== */
 .soto-sidebar {
-  width: 240px;
+  width: 76px;
   flex-shrink: 0;
   background-color: var(--soto-surface);
   border-right: 1px solid var(--soto-border);
   display: flex;
   flex-direction: column;
-  padding: 20px 14px 16px;
+  padding: 18px 12px 16px;
   position: sticky;
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  transition: width 0.24s ease, padding 0.24s ease;
+  z-index: 30;
 }
 
+.soto-sidebar.is-expanded { width: 250px; padding-inline: 15px; }
+
 .soto-brand-header {
-  margin-bottom: 16px;
-  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  margin-bottom: 20px;
+  padding: 0 2px;
 }
+
+.soto-sidebar-toggle { width: 30px; height: 30px; display: grid; place-items: center; flex: 0 0 auto; border: 0; border-radius: 9px; color: #788092; background: transparent; cursor: pointer; transition: color .16s ease, background .16s ease; }
+.soto-sidebar-toggle:hover { color: #292d38; background: #f0f1f4; }
 
 .soto-brand-link {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   text-decoration: none;
+  min-width: 0;
 }
 
 .soto-brand-logo-mark {
@@ -115,6 +127,9 @@
   border: 1px solid var(--soto-border);
   border-radius: var(--soto-radius-md);
   cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font: inherit;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   box-shadow: var(--soto-shadow-sm);
 }
@@ -238,6 +253,17 @@
   color: var(--soto-primary);
 }
 
+.soto-campaign-options { display: flex; max-height: 240px; flex-direction: column; gap: 2px; overflow-y: auto; }
+.soto-campaign-choice { min-height: 34px; padding: 5px 7px; gap: 8px; }
+.soto-campaign-choice:disabled { cursor: default; opacity: 1; }
+.soto-campaign-choice.is-selected { color: var(--soto-primary-hover); background: var(--soto-orange-surface); }
+.soto-campaign-choice-icon { width: 22px; height: 22px; display: grid; place-items: center; flex: 0 0 auto; overflow: hidden; border-radius: 7px; color: var(--soto-primary); background: #fff; }
+.soto-campaign-choice-icon img { width: 100%; height: 100%; object-fit: cover; }
+.soto-campaign-choice-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.soto-campaign-choice-check { flex: 0 0 auto; }
+.soto-campaign-empty, .soto-campaign-switch-error { margin: 4px 8px; color: var(--soto-text-secondary); font-size: 11px; line-height: 1.45; }
+.soto-campaign-switch-error { color: #b42318; }
+
 /* Sidebar Navigation Items */
 .soto-sidebar-section-label {
   display: block;
@@ -270,7 +296,9 @@
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  text-decoration: none;
+  transition: background-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+  position: relative;
 }
 
 .soto-nav-item:hover {
@@ -279,21 +307,33 @@
 }
 
 .soto-nav-item.is-active {
-  background-color: var(--soto-primary);
-  color: #ffffff;
+  background-color: #fff4ed;
+  color: #c85014;
   font-weight: 600;
 }
 
 .soto-nav-icon {
   display: grid;
   place-items: center;
-  width: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #f4f5f7;
   color: var(--soto-text-secondary);
   flex-shrink: 0;
+  transition: color .16s ease, background .16s ease, transform .16s ease;
 }
+.soto-nav-item:hover .soto-nav-icon { transform: scale(1.04); }
+.soto-nav-orange .soto-nav-icon { color: #f27635; background: #fff0e7; }
+.soto-nav-violet .soto-nav-icon { color: #8764d8; background: #f1edff; }
+.soto-nav-blue .soto-nav-icon { color: #477be0; background: #eaf1ff; }
+.soto-nav-green .soto-nav-icon { color: #36a778; background: #e8f7ef; }
+.soto-nav-pink .soto-nav-icon { color: #d95a9c; background: #ffedf5; }
+.soto-nav-cyan .soto-nav-icon { color: #239ab2; background: #e8f8fb; }
+.soto-nav-slate .soto-nav-icon { color: #697386; background: #eff1f4; }
 
 .soto-nav-item.is-active .soto-nav-icon {
-  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(242,118,53,.08);
 }
 
 .soto-nav-text {
@@ -392,13 +432,13 @@
 }
 
 .soto-topbar {
-  height: 60px;
-  background-color: var(--soto-surface);
-  border-bottom: 1px solid var(--soto-border);
+  min-height: 72px;
+  background-color: rgba(255,255,255,.92);
+  border-bottom: 1px solid #e9eaf0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
+  padding: 0 34px;
   position: sticky;
   top: 0;
   z-index: 20;
@@ -517,7 +557,7 @@
    CANVAS
    ======================================================================== */
 .soto-canvas {
-  padding: 22px 28px 48px;
+  padding: 30px 34px 48px;
   max-width: 1360px;
   width: 100%;
   margin: 0 auto;
@@ -532,11 +572,11 @@
   justify-content: space-between;
   gap: 24px;
   padding: 24px 28px;
-  border-radius: var(--soto-radius-lg);
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #3b82f6 100%);
+  border-radius: 20px;
+  background: linear-gradient(115deg, #f36b32 0%, #f5834d 54%, #efa268 100%);
   color: #ffffff;
   margin-bottom: 20px;
-  box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.24);
+  box-shadow: 0 12px 30px -12px rgba(205, 94, 44, 0.42);
 }
 
 .soto-banner-left {
@@ -615,8 +655,8 @@
 .soto-metric-card {
   background-color: var(--soto-surface);
   border: 1px solid var(--soto-border);
-  border-radius: var(--soto-radius-md);
-  padding: 16px 18px;
+  border-radius: 16px;
+  padding: 20px 20px;
   box-shadow: var(--soto-shadow-sm);
   display: flex;
   flex-direction: column;
@@ -1190,6 +1230,7 @@
     border-right: 0;
     border-bottom: 1px solid var(--soto-border);
     padding: 14px 16px;
+    overflow: visible;
   }
   .soto-sidebar-footer {
     display: none;
@@ -1212,4 +1253,107 @@
   .soto-banner-office-frame {
     height: 160px;
   }
+}
+
+.soto-placeholder-eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--soto-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+}
+
+.soto-placeholder-canvas { padding-top: 34px; }
+
+.soto-placeholder-card {
+  min-height: 330px;
+  padding: 42px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--soto-surface);
+  border: 1px solid var(--soto-border);
+  border-radius: var(--soto-radius-lg);
+  box-shadow: var(--soto-shadow-sm);
+}
+
+.soto-placeholder-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  color: var(--soto-primary);
+  background: var(--soto-orange-surface);
+}
+
+.soto-placeholder-badge {
+  padding: 5px 10px;
+  border: 1px solid var(--soto-orange-border);
+  border-radius: 999px;
+  color: var(--soto-primary-hover);
+  background: #fff8f2;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.soto-placeholder-card h2 {
+  margin: 14px 0 6px;
+  color: var(--soto-text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+
+.soto-placeholder-card p {
+  max-width: 420px;
+  margin: 0;
+  color: var(--soto-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* Icon-only desktop state remains fully discoverable through focus, hover and titles. */
+.soto-sidebar.is-collapsed .soto-brand-header { flex-direction: column; gap: 14px; }
+.soto-sidebar.is-collapsed .soto-brand-link { justify-content: center; }
+.soto-sidebar.is-collapsed .soto-brand-text,
+.soto-sidebar.is-collapsed .soto-campaign-details,
+.soto-sidebar.is-collapsed .soto-campaign-chevron,
+.soto-sidebar.is-collapsed .soto-sidebar-section-label,
+.soto-sidebar.is-collapsed .soto-nav-text,
+.soto-sidebar.is-collapsed .soto-user-meta { display: none; }
+.soto-sidebar.is-collapsed .soto-campaign-card-wrap { margin-bottom: 20px; }
+.soto-sidebar.is-collapsed .soto-campaign-card { justify-content: center; padding: 8px; }
+.soto-sidebar.is-collapsed .soto-campaign-dropdown { left: calc(100% + 10px); right: auto; top: 0; width: 220px; }
+.soto-sidebar.is-collapsed .soto-nav-item { justify-content: center; padding-inline: 0; }
+.soto-sidebar.is-collapsed .soto-user-profile-strip { justify-content: center; flex-wrap: wrap; }
+.soto-sidebar.is-collapsed .soto-sidebar-footer form { width: 100%; display: flex; justify-content: center; }
+.soto-sidebar.is-collapsed .soto-nav-item::after { content: attr(aria-label); position: absolute; left: calc(100% + 9px); z-index: 45; padding: 6px 9px; border-radius: 7px; background: #20232b; color: white; font-size: 11px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-3px); transition: opacity .14s ease, transform .14s ease; }
+.soto-sidebar.is-collapsed .soto-nav-item:hover::after,
+.soto-sidebar.is-collapsed .soto-nav-item:focus-visible::after { opacity: 1; transform: translateX(0); }
+.soto-sidebar form { margin: 0; }
+.soto-sidebar.is-collapsed .soto-sidebar-footer { padding-top: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .soto-sidebar, .soto-sidebar *, .soto-main-wrapper * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+@media (max-width: 768px) {
+  .soto-sidebar.is-collapsed,
+  .soto-sidebar.is-expanded { width: 100%; }
+  .soto-sidebar.is-collapsed .soto-brand-header { flex-direction: row; gap: 0; }
+  .soto-sidebar.is-collapsed .soto-brand-link { justify-content: flex-start; }
+  .soto-sidebar.is-collapsed .soto-brand-text,
+  .soto-sidebar.is-collapsed .soto-campaign-details,
+  .soto-sidebar.is-collapsed .soto-campaign-chevron,
+  .soto-sidebar.is-collapsed .soto-sidebar-section-label,
+  .soto-sidebar.is-collapsed .soto-nav-text { display: initial; }
+  .soto-sidebar.is-collapsed .soto-campaign-dropdown { left: 0; right: 0; top: 54px; width: auto; }
+  .soto-sidebar.is-collapsed .soto-campaign-card { justify-content: flex-start; padding: 8px 10px; }
+  .soto-sidebar.is-collapsed .soto-nav-item { justify-content: flex-start; padding-inline: 12px; }
+  .soto-sidebar.is-collapsed .soto-nav-item::after { display: none; }
 }

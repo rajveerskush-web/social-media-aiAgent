@@ -1,10 +1,12 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { campaignIcons, officeOptions } from "@/lib/campaign-options";
 import { campaign, getDb } from "@/db";
-import { createInsForgeServerClient, persistAuthenticatedUserProfile } from "@/lib/insforge/server";
+import { saveCurrentCampaignSelection } from "@/lib/campaign-selection";
+import { createInsForgeServerClient, getAuthenticatedUser, persistAuthenticatedUserProfile } from "@/lib/insforge/server";
 
 const acceptedMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 const maxIconBytes = 256 * 1024;
@@ -20,6 +22,23 @@ function hasImageSignature(bytes: Buffer, mime: string) {
 function value(formData: FormData, key: string) {
   const entry = formData.get(key);
   return typeof entry === "string" ? entry.trim() : "";
+}
+
+function logCampaignInsertFailure(error: unknown) {
+  const details = error instanceof Error ? error as Error & {
+    code?: unknown;
+    constraint?: unknown;
+    table?: unknown;
+    column?: unknown;
+  } : null;
+
+  console.error("[campaign:create] Database insert failed", {
+    errorName: details?.name ?? "UnknownError",
+    ...(typeof details?.code === "string" ? { code: details.code } : {}),
+    ...(typeof details?.constraint === "string" ? { constraint: details.constraint } : {}),
+    ...(typeof details?.table === "string" ? { table: details.table } : {}),
+    ...(typeof details?.column === "string" ? { column: details.column } : {}),
+  });
 }
 
 export async function createCampaign(formData: FormData): Promise<{ error?: string }> {
@@ -42,21 +61,8 @@ export async function createCampaign(formData: FormData): Promise<{ error?: stri
   const user = data?.user;
   if (authError || !user?.id || !user.email) redirect("/sign-in");
 
-  const db = getDb();
-  let existing: { id: number } | undefined;
-  try {
-    [existing] = await db
-      .select({ id: campaign.id })
-      .from(campaign)
-      .where(eq(campaign.authUserId, user.id))
-      .limit(1);
-  } catch {
-    return { error: "We couldn’t check your campaign right now. Please try again." };
-  }
-  if (existing) redirect("/dashboard");
-
   const profile = await persistAuthenticatedUserProfile(insforge);
-  if (profile.error) return { error: "We couldn’t prepare your account yet. Please try again." };
+  if (profile.error) return { error: "We could not prepare your account yet. Please try again." };
 
   let iconBytes: Buffer | null = null;
   if (iconFile) {
@@ -64,30 +70,50 @@ export async function createCampaign(formData: FormData): Promise<{ error?: stri
     if (!hasImageSignature(iconBytes, iconFile.type)) return { error: "That file is not a valid PNG, JPEG, or WebP image." };
   }
 
-  let inserted: { id: number }[];
+  let createdCampaign: { id: number } | undefined;
   try {
-    inserted = await db.insert(campaign).values({
+    [createdCampaign] = await getDb().insert(campaign).values({
       authUserId: user.id,
       name,
       iconKey: iconFile ? null : iconKey,
       iconImage: iconBytes,
       iconImageMime: iconFile?.type ?? null,
       officeImage,
-    }).onConflictDoNothing({ target: campaign.authUserId }).returning({ id: campaign.id });
-  } catch {
-    return { error: "We couldn’t save your campaign. Please try again." };
+    }).returning({ id: campaign.id });
+  } catch (error) {
+    logCampaignInsertFailure(error);
+    return { error: "We could not save your campaign. Please try again." };
   }
 
-  if (inserted.length === 0) {
-    try {
-      const [createdByOtherRequest] = await db.select({ id: campaign.id }).from(campaign).where(eq(campaign.authUserId, user.id)).limit(1);
-      if (createdByOtherRequest) redirect("/dashboard");
-    } catch (error) {
-      if (error && typeof error === "object" && "digest" in error) throw error;
-      return { error: "We couldn’t confirm your campaign was saved. Please refresh and try again." };
-    }
-    return { error: "We couldn’t save your campaign. Please try again." };
+  if (!createdCampaign) {
+    console.error("[campaign:create] Database insert returned no campaign row");
+    return { error: "We could not save your campaign. Please try again." };
   }
 
+  await saveCurrentCampaignSelection(createdCampaign.id);
+  revalidatePath("/dashboard");
   redirect("/dashboard");
+}
+
+export async function selectCampaign(campaignId: number): Promise<{ error?: string }> {
+  const user = await getAuthenticatedUser();
+  if (!user?.id) redirect("/sign-in");
+  if (!Number.isSafeInteger(campaignId) || campaignId <= 0) {
+    return { error: "Choose a valid campaign." };
+  }
+
+  try {
+    const [ownedCampaign] = await getDb()
+      .select({ id: campaign.id })
+      .from(campaign)
+      .where(and(eq(campaign.id, campaignId), eq(campaign.authUserId, user.id)))
+      .limit(1);
+    if (!ownedCampaign) return { error: "That campaign is not available in your workspace." };
+  } catch {
+    return { error: "We could not switch campaigns right now. Please try again." };
+  }
+
+  await saveCurrentCampaignSelection(campaignId);
+  revalidatePath("/dashboard");
+  return {};
 }
