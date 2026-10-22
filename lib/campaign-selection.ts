@@ -13,3 +13,8 @@ export async function saveCurrentCampaignSelection(campaignId: number) {
     maxAge: 60 * 60 * 24 * 365,
   });
 }
+
+export async function clearCurrentCampaignSelection() {
+  const cookieStore = await cookies();
+  cookieStore.delete(CURRENT_CAMPAIGN_COOKIE);
+}

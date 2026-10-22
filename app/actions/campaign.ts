@@ -1,11 +1,11 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { campaignIcons, officeOptions } from "@/lib/campaign-options";
 import { campaign, getDb } from "@/db";
-import { saveCurrentCampaignSelection } from "@/lib/campaign-selection";
+import { clearCurrentCampaignSelection, saveCurrentCampaignSelection } from "@/lib/campaign-selection";
 import { createInsForgeServerClient, getAuthenticatedUser, persistAuthenticatedUserProfile } from "@/lib/insforge/server";
 
 const acceptedMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -116,4 +116,48 @@ export async function selectCampaign(campaignId: number): Promise<{ error?: stri
   await saveCurrentCampaignSelection(campaignId);
   revalidatePath("/dashboard");
   return {};
+}
+
+export async function deleteCampaign(campaignId: number): Promise<{ error?: string; redirectTo?: "/dashboard" | "/create-campaign" }> {
+  const user = await getAuthenticatedUser();
+  if (!user?.id) redirect("/sign-in");
+  if (!Number.isSafeInteger(campaignId) || campaignId <= 0) {
+    return { error: "Choose a valid campaign to delete." };
+  }
+
+  try {
+    const result = await getDb().transaction(async (tx) => {
+      const [deleted] = await tx
+        .delete(campaign)
+        .where(and(eq(campaign.id, campaignId), eq(campaign.authUserId, user.id)))
+        .returning({ id: campaign.id });
+
+      if (!deleted) return { deleted: false as const, nextCampaignId: null };
+
+      const [remainingCampaign] = await tx
+        .select({ id: campaign.id })
+        .from(campaign)
+        .where(eq(campaign.authUserId, user.id))
+        .orderBy(asc(campaign.createdAt), asc(campaign.id))
+        .limit(1);
+
+      return { deleted: true as const, nextCampaignId: remainingCampaign?.id ?? null };
+    });
+
+    if (!result.deleted) return { error: "That campaign is not available in your workspace." };
+
+    if (result.nextCampaignId !== null) {
+      await saveCurrentCampaignSelection(result.nextCampaignId);
+    } else {
+      await clearCurrentCampaignSelection();
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/create-campaign");
+    return { redirectTo: result.nextCampaignId === null ? "/create-campaign" : "/dashboard" };
+  } catch (error) {
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    console.error("[campaign:delete] Database operation failed", { errorName });
+    return { error: "We could not delete this campaign. Please try again." };
+  }
 }
