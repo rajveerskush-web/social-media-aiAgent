@@ -1,15 +1,16 @@
 import { getAuthenticatedUser, getAuthenticatedUserCampaign, getAuthenticatedUserCampaigns, getAuthenticatedUserProfile } from "@/lib/insforge/server";
-import { officeOptions } from "@/lib/campaign-options";
+import { getOfficeOptionByStoredId } from "@/lib/campaign-options";
 import { getDb, posts } from "@/db";
 import { count, desc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { SociafyDashboard } from "@/components/dashboard/soto-dashboard";
 
 type DashboardPageProps = {
-  searchParams: Promise<{ profile?: string }>;
+  searchParams: Promise<{ profile?: string; campaignDeleted?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const { campaignDeleted } = await searchParams;
   const user = await getAuthenticatedUser();
   if (!user) redirect("/sign-in");
 
@@ -18,7 +19,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const campaigns = await getAuthenticatedUserCampaigns();
   const storedProfile = await getAuthenticatedUserProfile();
   const { items: recentContent, count: recentContentCount, error: contentReadError } = await getRecentContent(storedProfile?.id);
-  const selectedOffice = officeOptions.find((office) => office.id === storedCampaign.officeImage);
+  const selectedOffice = getOfficeOptionByStoredId(storedCampaign.officeImage);
+  // Unknown saved values stay unavailable; never silently show a different office.
 
   return (
     <SociafyDashboard
@@ -30,6 +32,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       recentContentCount={recentContentCount}
       contentReadError={contentReadError}
       selectedOffice={selectedOffice}
+      officeSceneType={selectedOffice?.sceneType ?? null}
+      campaignDeletedNotice={campaignDeleted === "1"}
     />
   );
 }

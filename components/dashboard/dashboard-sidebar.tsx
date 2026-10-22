@@ -10,7 +10,6 @@ import {
   Check,
   ChevronDown,
   FileText,
-  Flame,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -21,10 +20,11 @@ import {
   Sparkles,
   Target,
   BrainCircuit,
+  Trash2,
   Users,
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
-import { selectCampaign } from "@/app/actions/campaign";
+import { deleteCampaign, selectCampaign } from "@/app/actions/campaign";
 
 type SidebarUser = {
   email: string;
@@ -39,22 +39,25 @@ type SidebarCampaign = {
 };
 
 const navigationItems = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, tone: "orange" },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, tone: "blue" },
   { href: "/ai-agent", label: "AI Agent", icon: Bot, tone: "violet" },
   { href: "/posts", label: "Posts", icon: FileText, tone: "blue" },
   { href: "/calendar", label: "Calendar", icon: Calendar, tone: "green" },
   { href: "/analytics", label: "Analytics", icon: Sparkles, tone: "pink" },
   { href: "/accounts", label: "Accounts", icon: Users, tone: "cyan" },
-  { href: "/settings", label: "Settings", icon: Settings, tone: "slate" },
 ];
+const settingsItem = { href: "/settings", label: "Settings", icon: Settings, tone: "slate" };
 
 export function DashboardSidebar({ user, storedCampaign, campaigns, profileName }: { user: SidebarUser; storedCampaign: SidebarCampaign | null; campaigns: SidebarCampaign[]; profileName?: string | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [showCampaignDropdown, setShowCampaignDropdown] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [switchError, setSwitchError] = useState("");
   const [isSwitching, startSwitch] = useTransition();
+  const [isDeleting, startDelete] = useTransition();
   const displayName = profileName?.trim() || user.profile?.name?.trim() || user.email;
   const firstName = displayName.split(/[\s@]/)[0] || "there";
   const CampaignIcon = storedCampaign?.iconKey === "rocket"
@@ -63,7 +66,7 @@ export function DashboardSidebar({ user, storedCampaign, campaigns, profileName 
       ? Target
       : storedCampaign?.iconKey === "brain"
         ? BrainCircuit
-        : Flame;
+        : Sparkles;
 
   function openCampaignWizard() {
     setShowCampaignDropdown(false);
@@ -80,6 +83,21 @@ export function DashboardSidebar({ user, storedCampaign, campaigns, profileName 
       setSwitchError("");
       setShowCampaignDropdown(false);
       router.refresh();
+    });
+  }
+
+  function confirmDeleteCampaign() {
+    if (!storedCampaign) return;
+    setDeleteError("");
+    startDelete(async () => {
+      const result = await deleteCampaign(storedCampaign.id);
+      if (result.error || !result.redirectTo) {
+        setDeleteError(result.error ?? "We could not delete this campaign. Please try again.");
+        return;
+      }
+      setShowDeleteConfirmation(false);
+      setShowCampaignDropdown(false);
+      router.replace(`${result.redirectTo}?campaignDeleted=1`);
     });
   }
 
@@ -134,7 +152,7 @@ export function DashboardSidebar({ user, storedCampaign, campaigns, profileName 
                 const ItemIcon = item.iconKey === "rocket" ? Rocket
                   : item.iconKey === "target" ? Target
                     : item.iconKey === "brain" ? BrainCircuit
-                      : Flame;
+                      : Sparkles;
                 return (
                   <button
                     key={item.id}
@@ -158,9 +176,62 @@ export function DashboardSidebar({ user, storedCampaign, campaigns, profileName 
             <button type="button" onClick={openCampaignWizard} className="soto-dropdown-link">
               <Plus size={14} /> Create new campaign
             </button>
+            <button
+              type="button"
+              onClick={() => { setDeleteError(""); setShowDeleteConfirmation(true); }}
+              className="soto-dropdown-link soto-delete-campaign-link"
+              disabled={!storedCampaign || isDeleting}
+            >
+              <Trash2 size={14} /> Delete campaign
+            </button>
           </div>
         )}
       </div>
+
+      {showDeleteConfirmation && storedCampaign && (
+        <div
+          className="soto-modal-backdrop"
+          onClick={(event) => {
+            if (!isDeleting && event.target === event.currentTarget) setShowDeleteConfirmation(false);
+          }}
+        >
+          <section
+            className="soto-modal-card soto-delete-campaign-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-campaign-title"
+            aria-describedby="delete-campaign-description"
+          >
+            <div className="soto-modal-top">
+              <div>
+                <h2 className="soto-modal-heading" id="delete-campaign-title">Delete campaign?</h2>
+                <p className="soto-modal-sub">{storedCampaign.name}</p>
+              </div>
+              <button
+                type="button"
+                className="soto-modal-close-btn"
+                onClick={() => setShowDeleteConfirmation(false)}
+                aria-label="Cancel campaign deletion"
+                disabled={isDeleting}
+              >
+                ×
+              </button>
+            </div>
+            <p className="soto-delete-campaign-description" id="delete-campaign-description">
+              This permanently removes the campaign. Your account, saved posts, and other campaigns will remain.
+            </p>
+            {deleteError && <p className="soto-campaign-switch-error" role="alert">{deleteError}</p>}
+            <div className="soto-delete-campaign-actions">
+              <button type="button" className="soto-delete-cancel-btn" onClick={() => setShowDeleteConfirmation(false)} disabled={isDeleting}>
+                Cancel
+              </button>
+              <button type="button" className="soto-delete-confirm-btn" onClick={confirmDeleteCampaign} disabled={isDeleting}>
+                {isDeleting ? "Deleting…" : "Delete campaign"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <span className="soto-sidebar-section-label">WORKSPACE</span>
       <nav className="soto-nav-list" aria-label="Workspace navigation">
@@ -184,6 +255,16 @@ export function DashboardSidebar({ user, storedCampaign, campaigns, profileName 
       </nav>
 
       <div className="soto-sidebar-footer">
+        <Link
+          href={settingsItem.href}
+          className={`soto-nav-item soto-nav-${settingsItem.tone} soto-settings-link ${pathname === settingsItem.href ? "is-active" : ""}`}
+          title={isCollapsed ? settingsItem.label : undefined}
+          aria-label={settingsItem.label}
+          aria-current={pathname === settingsItem.href ? "page" : undefined}
+        >
+          <span className="soto-nav-icon"><Settings size={16} strokeWidth={pathname === settingsItem.href ? 2.2 : 1.75} /></span>
+          <span className="soto-nav-text">Settings</span>
+        </Link>
         <div className="soto-user-profile-strip">
           <div className="soto-user-avatar">{firstName.slice(0, 1).toUpperCase()}</div>
           <div className="soto-user-meta">

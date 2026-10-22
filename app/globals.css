@@ -682,6 +682,7 @@ html { scroll-behavior: smooth; }
 }
 .campaign-back-button:hover { color: #171717; }
 .campaign-form-error { margin: 14px 0 0; color: #ef4444; font-size: 13px; }
+.campaign-success-notice { flex: 0 0 auto; margin: 9px 0; padding: 9px 12px; border: 1px solid #b7e4cb; border-radius: 9px; color: #176b43; background: #effaf4; font-size: 12px; font-weight: 600; }
 .campaign-mobile-progress { display: none; }
 .campaign-office-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: clamp(10px, 1.6vh, 16px); }
 .campaign-office-card {

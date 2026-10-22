@@ -8,7 +8,7 @@ import { campaignIcons, type OfficeOption } from "@/lib/campaign-options";
 
 const iconComponents = { sparkles: Sparkles, rocket: Rocket, target: Target, brain: BrainCircuit };
 
-export function CampaignWizard({ userName, offices }: { userName: string; offices: OfficeOption[] }) {
+export function CampaignWizard({ userName, offices, campaignDeletedNotice = false }: { userName: string; offices: OfficeOption[]; campaignDeletedNotice?: boolean }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState("");
   const [iconKey, setIconKey] = useState("sparkles");
@@ -80,6 +80,7 @@ export function CampaignWizard({ userName, offices }: { userName: string; office
       </aside>
 
       <section className="campaign-setup-main">
+        {campaignDeletedNotice && <p className="campaign-success-notice" role="status">Campaign deleted successfully. You can create a new campaign below.</p>}
         <div className="campaign-setup-topline">
           <span>Workspace setup <span className="campaign-topline-slash">/</span> <strong>{step === 1 ? "Campaign basics" : "Office selection"}</strong></span>
           <span className="campaign-user-chip"><span>{userName.slice(0, 1).toUpperCase()}</span>{userName}</span>

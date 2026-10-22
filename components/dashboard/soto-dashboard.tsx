@@ -4,17 +4,20 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  Activity,
+  BrainCircuit,
   Bell,
-  Check,
-  Clock,
+  CalendarClock,
   FilePlus2,
   FileText,
-  Link2,
+  Rocket,
   Search,
-  Send,
   Sparkles,
   Info,
+  Plus,
+  Target,
 } from "lucide-react";
+import { AiAgentOffice, type OfficeSceneType } from "@/components/dashboard/ai-agent-office";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 
 type DashboardProps = {
@@ -54,7 +57,10 @@ type DashboardProps = {
     title: string;
     image: string;
     description?: string;
+    sceneType: OfficeSceneType;
   };
+  officeSceneType: OfficeSceneType | null;
+  campaignDeletedNotice?: boolean;
 };
 
 export function SociafyDashboard({
@@ -66,49 +72,21 @@ export function SociafyDashboard({
   recentContentCount,
   contentReadError,
   selectedOffice,
+  officeSceneType,
+  campaignDeletedNotice = false,
 }: DashboardProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [showContentModal, setShowContentModal] = useState(false);
 
   const displayName =
     storedProfile?.name?.trim() || user.profile?.name?.trim() || user.email;
   const firstName = displayName.split(/[\s@]/)[0] || "there";
-
-  // Exactly three primary metric cards
-  const metricCards = [
-    {
-      id: "scheduled",
-      label: "Scheduled posts",
-      value: "0",
-      subtext: "Nothing queued yet",
-      icon: Clock,
-      iconBg: "#FFF3E8",
-      iconColor: "#FF6B1A",
-    },
-    {
-      id: "published",
-      label: "Published",
-      value: "0",
-      subtext: "This month",
-      icon: Send,
-      iconBg: "#F5F3FF",
-      iconColor: "#8B5CF6",
-    },
-    {
-      id: "connected",
-      label: "Connected accounts",
-      value: "0",
-      subtext: "Connect your first channel",
-      icon: Link2,
-      iconBg: "#ECFEFF",
-      iconColor: "#06B6D4",
-    },
-  ];
-
-  // Campaign checklist progress
-  const hasSavedContent = recentContentCount > 0;
-  const completedSteps = hasSavedContent ? 2 : 1;
-  const progressPercent = Math.round((completedSteps / 3) * 100);
+  const CampaignIcon = storedCampaign.iconKey === "rocket"
+    ? Rocket
+    : storedCampaign.iconKey === "target"
+      ? Target
+      : storedCampaign.iconKey === "brain"
+        ? BrainCircuit
+        : Sparkles;
 
   return (
     <div className="soto-layout">
@@ -121,267 +99,154 @@ export function SociafyDashboard({
         <header className="soto-topbar">
           <div className="soto-topbar-heading">
             <h1 className="soto-page-title">Overview</h1>
+            <p className="soto-page-subtitle">A snapshot of your campaign at a glance</p>
           </div>
 
           <div className="soto-topbar-actions">
-            {/* Search */}
-            <div className="soto-search-box">
+            {/* Search is visible in the reference but not yet backed by a search feature. */}
+            <div className="soto-search-box soto-search-coming-soon" role="group" aria-label="Search, coming soon">
               <Search size={14} className="soto-search-icon" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="soto-search-field"
-              />
-              <span className="soto-kbd-badge">⌘ F</span>
+              <span className="soto-search-placeholder">Search campaigns, posts, or anything...</span>
+              <span className="soto-search-status">Coming soon</span>
             </div>
 
-            {/* Notification bell */}
             <button
               type="button"
-              className="soto-icon-btn"
-              aria-label="Notifications"
-              title="Notifications"
+              className="soto-icon-btn soto-notifications-btn"
+              aria-label="Notifications coming soon"
+              title="Notifications coming soon"
+              disabled
             >
-              <Bell size={16} />
-              <span className="soto-notif-dot" />
+              <Bell size={17} />
             </button>
 
-            {/* Generate post button */}
-            <button
-              type="button"
-              onClick={() => setShowContentModal(true)}
-              className="soto-primary-btn"
-              title="Generate post for campaign"
-            >
-              <Sparkles size={14} />
-              <span>Generate post</span>
-            </button>
+            <Link href="/posts" className="soto-primary-btn">
+              <Plus size={16} aria-hidden="true" />
+              <span>Create post</span>
+            </Link>
           </div>
         </header>
 
         {/* Dashboard Canvas */}
-        <main className="soto-canvas">
-          {/* ===================== 3. WELCOME BANNER ===================== */}
-          <section className="soto-welcome-banner" aria-label="Campaign welcome">
-            <div className="soto-banner-left">
-              {/* Compact status indicator */}
-              <div className="soto-banner-status">
-                <span className="soto-status-pulse-dot" />
-                <span>Agents online</span>
-              </div>
+        <main className="soto-canvas soto-overview-canvas">
+          {campaignDeletedNotice && <p className="soto-campaign-success-notice" role="status">Campaign deleted successfully.</p>}
+          <div className="soto-overview-layout">
+            <div className="soto-overview-primary">
+              <header className="soto-overview-intro">
+                <p className="soto-overview-greeting">Good morning, {firstName}!</p>
+                <h2>Your AI Creative Team is on it.</h2>
+                <p>From trends to content to posting, your agents work together to turn ideas into real growth.</p>
+              </header>
 
-              {/* Heading */}
-              <h2 className="soto-banner-title">
-                Welcome back, {firstName} 👋
-              </h2>
+              <section className="soto-overview-section" aria-label="Selected campaign">
+                <div className="soto-campaign-status-card">
+                  <div className="soto-campaign-status-mark">
+                    {storedCampaign.iconImage ? (
+                      <Image src={storedCampaign.iconImage} alt="" width={28} height={28} unoptimized />
+                    ) : (
+                      <CampaignIcon size={22} aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="soto-campaign-status-copy">
+                    <strong>{storedCampaign.name}</strong>
+                    <span>{selectedOffice?.description ?? "Your selected campaign workspace."}</span>
+                  </div>
+                  <span className="soto-campaign-status-badge"><i /> Selected</span>
+                </div>
+              </section>
 
-              {/* Description */}
-              <p className="soto-banner-subtitle">
-                Your AI team for <strong>{storedCampaign.name}</strong> is set
-                up in its new office and ready to start creating content.
-              </p>
-            </div>
-
-            {/* Office Image */}
-            <div className="soto-banner-right">
-              <div className="soto-banner-office-frame">
-                <Image
-                  src={
-                    selectedOffice?.image ||
-                    "/offices/Screenshot%202026-10-18%20214546.png"
-                  }
-                  alt={selectedOffice?.title || "AI Agent Office"}
-                  fill
-                  priority
-                  sizes="(max-width: 900px) 100vw, 360px"
-                  className="object-cover"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* ===================== 4. THREE PRIMARY METRIC CARDS ===================== */}
-          <section
-            className="soto-metric-grid-three"
-            aria-label="Primary metric statistics"
-          >
-            {metricCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <div key={card.id} className="soto-metric-card">
-                  <div className="soto-metric-top">
-                    <span className="soto-metric-label">{card.label}</span>
-                    <span
-                      className="soto-metric-icon-box"
-                      style={{
-                        backgroundColor: card.iconBg,
-                        color: card.iconColor,
-                      }}
-                    >
-                      <Icon size={16} />
+              <div className="soto-overview-panels">
+                <section className="soto-overview-card soto-overview-section" aria-labelledby="scheduled-posts-title">
+                  <div className="soto-overview-card-heading">
+                    <h3 id="scheduled-posts-title">Upcoming Posts</h3>
+                    <Link href="/calendar" className="soto-overview-calendar-link">
+                      View Calendar <span aria-hidden="true">&rarr;</span>
+                    </Link>
+                  </div>
+                  <div className="soto-overview-empty-card">
+                    <span className="soto-overview-empty-icon">
+                      <CalendarClock size={20} />
                     </span>
+                    <strong>No posts scheduled yet</strong>
+                    <p>Schedule your first post to get started.</p>
                   </div>
-                  <div className="soto-metric-body">
-                    <span className="soto-metric-value">{card.value}</span>
+                </section>
+
+                <section className="soto-overview-card soto-overview-section" aria-labelledby="recent-activity-title">
+                  <div className="soto-overview-card-heading">
+                    <h3 id="recent-activity-title">Recent Activity</h3>
                   </div>
-                  <span className="soto-metric-subtext">{card.subtext}</span>
-                </div>
-              );
-            })}
-          </section>
-
-          {/* ===================== 5. CAMPAIGN SETUP CHECKLIST ===================== */}
-          <section className="soto-setup-card" aria-label="Campaign setup checklist">
-            <div className="soto-setup-header">
-              <div className="soto-setup-title-group">
-                <h3 className="soto-setup-title">Get your campaign running</h3>
-                <p className="soto-setup-desc">
-                  Complete these essential steps to activate your campaign.
-                </p>
-              </div>
-              <div className="soto-setup-progress-meta">
-                <span className="soto-setup-step-count">
-                  {completedSteps} of 3 steps complete
-                </span>
-                <div className="soto-progress-bar-track">
-                  <div
-                    className="soto-progress-bar-fill"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Checklist Rows */}
-            <div className="soto-checklist-rows">
-              {/* Step 1: Create your campaign (COMPLETED) */}
-              <div className="soto-checklist-row is-complete">
-                <div className="soto-step-status-icon is-done">
-                  <Check size={14} strokeWidth={2.5} />
-                </div>
-                <div className="soto-step-copy">
-                  <strong className="soto-step-name">Create your campaign</strong>
-                  <span className="soto-step-note">
-                    {storedCampaign.name} is ready in your workspace
-                  </span>
-                </div>
-                <span className="soto-step-badge is-done">Completed</span>
+                  <div className="soto-overview-empty-card">
+                    <span className="soto-overview-empty-icon">
+                      <FileText size={20} />
+                    </span>
+                    <strong>No recent activity</strong>
+                    <p>Your campaign activity will appear here.</p>
+                  </div>
+                </section>
               </div>
 
-              {/* Step 2: Connect a social account (COMING SOON) */}
-              <div className="soto-checklist-row">
-                <div className="soto-step-status-icon">
-                  <Link2 size={14} />
-                </div>
-                <div className="soto-step-copy">
-                  <strong className="soto-step-name">Connect a social account</strong>
-                  <span className="soto-step-note">
-                    Link your Instagram, Facebook, or LinkedIn channels
-                  </span>
-                </div>
-                <span className="soto-step-badge is-pending">Coming soon</span>
-              </div>
-
-              {/* Step 3: Generate your first post */}
-              <div
-                className={`soto-checklist-row ${hasSavedContent ? "is-complete" : ""}`}
-              >
-                <div
-                  className={`soto-step-status-icon ${hasSavedContent ? "is-done" : ""}`}
-                >
-                  {hasSavedContent ? (
-                    <Check size={14} strokeWidth={2.5} />
-                  ) : (
-                    <Sparkles size={14} />
-                  )}
-                </div>
-                <div className="soto-step-copy">
-                  <strong className="soto-step-name">
-                    Save your first post
-                  </strong>
-                  <span className="soto-step-note">
-                    {hasSavedContent
-                      ? `${recentContentCount} saved post${recentContentCount === 1 ? "" : "s"} on your account`
-                      : "Create and save content to your workspace"}
-                  </span>
-                </div>
-                {hasSavedContent ? (
-                  <span className="soto-step-badge is-done">Completed</span>
-                ) : (
+              <section className="soto-recent-content-card" aria-label="Recent saved content">
+                <div className="soto-recent-content-header">
+                  <div>
+                    <h3 className="soto-panel-title">Recent saved content</h3>
+                    <p className="soto-panel-subtitle">Posts saved to your account</p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowContentModal(true)}
-                    className="soto-step-badge is-action"
+                    className="soto-text-action-btn"
                   >
-                    View generator
+                    View all ({recentContentCount}) &rarr;
                   </button>
-                )}
-              </div>
-            </div>
-          </section>
+                </div>
 
-          {/* ===================== 6. RECENT CONTENT (REAL STORED DATA) ===================== */}
-          <section className="soto-recent-content-card" aria-label="Recent content">
-            <div className="soto-recent-content-header">
-              <div>
-                <h3 className="soto-panel-title">Recent saved content</h3>
-                <p className="soto-panel-subtitle">
-                  Posts saved to your account
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowContentModal(true)}
-                className="soto-text-action-btn"
-              >
-                View all ({recentContentCount}) →
-              </button>
-            </div>
-
-            {contentReadError ? (
-              <div className="soto-compact-empty">
-                <Info size={20} className="text-amber-500 mb-2" />
-                <strong>Unable to load saved content</strong>
-                <p>Check database connection to refresh saved posts.</p>
-              </div>
-            ) : recentContent.length > 0 ? (
-              <div className="soto-posts-stack">
-                {recentContent.map((post) => (
-                  <div key={post.id} className="soto-saved-post-row">
-                    <span className="soto-post-type-icon">
-                      <FilePlus2 size={15} />
-                    </span>
-                    <div className="soto-post-content-wrap">
-                      <strong>{post.title}</strong>
-                      <p>{post.content || "No preview content saved"}</p>
-                    </div>
-                    <time dateTime={post.createdAt.toISOString()}>
-                      {new Intl.DateTimeFormat("en", {
-                        month: "short",
-                        day: "numeric",
-                      }).format(post.createdAt)}
-                    </time>
+                {contentReadError ? (
+                  <div className="soto-compact-empty">
+                    <Info size={20} className="text-amber-500 mb-2" />
+                    <strong>Unable to load saved content</strong>
+                    <p>Check database connection to refresh saved posts.</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="soto-compact-empty">
-                <FileText size={22} className="soto-empty-glyph" />
-                <strong>No content created yet</strong>
-                <p>Saved posts will appear here once they are available in your workspace.</p>
-              </div>
-            )}
-          </section>
+                ) : recentContent.length > 0 ? (
+                  <div className="soto-posts-stack">
+                    {recentContent.map((post) => (
+                      <div key={post.id} className="soto-saved-post-row">
+                        <span className="soto-post-type-icon">
+                          <FilePlus2 size={15} />
+                        </span>
+                        <div className="soto-post-content-wrap">
+                          <strong>{post.title}</strong>
+                          <p>{post.content || "No preview content saved"}</p>
+                        </div>
+                        <time dateTime={post.createdAt.toISOString()}>
+                          {new Intl.DateTimeFormat("en", {
+                            month: "short",
+                            day: "numeric",
+                          }).format(post.createdAt)}
+                        </time>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="soto-compact-empty">
+                    <FileText size={22} className="soto-empty-glyph" />
+                    <strong>No content created yet</strong>
+                    <p>Saved posts will appear here once they are available in your workspace.</p>
+                  </div>
+                )}
+              </section>
 
-          {/* Clean Dashboard Footer */}
-          <footer className="soto-dashboard-footer">
-            <span className="soto-footer-text">
-              © {new Date().getFullYear()} SOTO AI • Workspace active for{" "}
-              <strong>{storedCampaign.name}</strong>
-            </span>
-          </footer>
+              <footer className="soto-dashboard-footer">
+                <span className="soto-footer-text">
+                  &copy; {new Date().getFullYear()} SOTO AI &middot; Workspace active for{" "}
+                  <strong>{storedCampaign.name}</strong>
+                </span>
+              </footer>
+            </div>
+            <div className={`soto-overview-office-column ${officeSceneType === "modern" ? "is-modern" : ""}`}>
+              <AiAgentOffice key={officeSceneType ?? "unavailable"} sceneType={officeSceneType} />
+            </div>
+          </div>
         </main>
       </div>
 
@@ -465,7 +330,7 @@ export function SociafyDashboard({
                 <div className="soto-modal-empty-notice">
                   <FileText size={20} className="text-slate-400 mb-1" />
                   <strong>No saved content yet</strong>
-                  <p>When your AI agent generates posts, they will be saved here.</p>
+                  <p>Saved posts will appear here as you add content to your workspace.</p>
                 </div>
               )}
             </div>
