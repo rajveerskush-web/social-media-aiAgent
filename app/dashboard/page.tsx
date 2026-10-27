@@ -1,5 +1,6 @@
-import { getAuthenticatedUser, getAuthenticatedUserCampaign, getAuthenticatedUserCampaigns, getAuthenticatedUserProfile } from "@/lib/insforge/server";
+import { getAuthenticatedWorkspaceData } from "@/lib/insforge/server";
 import { getOfficeOptionByStoredId } from "@/lib/campaign-options";
+import { getOfficeAgents } from "@/lib/office-agents";
 import { getDb, posts } from "@/db";
 import { count, desc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -11,15 +12,15 @@ type DashboardPageProps = {
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const { campaignDeleted } = await searchParams;
-  const user = await getAuthenticatedUser();
+  const { user, storedCampaign, campaigns, storedProfile } = await getAuthenticatedWorkspaceData();
   if (!user) redirect("/sign-in");
-
-  const storedCampaign = await getAuthenticatedUserCampaign();
   if (!storedCampaign) redirect("/create-campaign");
-  const campaigns = await getAuthenticatedUserCampaigns();
-  const storedProfile = await getAuthenticatedUserProfile();
-  const { items: recentContent, count: recentContentCount, error: contentReadError } = await getRecentContent(storedProfile?.id);
   const selectedOffice = getOfficeOptionByStoredId(storedCampaign.officeImage);
+  const officeSceneType = selectedOffice?.sceneType ?? null;
+  const [recentContentData, officeAgents] = await Promise.all([
+    getRecentContent(storedProfile?.id),
+    getOfficeAgents(officeSceneType),
+  ]);
   // Unknown saved values stay unavailable; never silently show a different office.
 
   return (
@@ -28,11 +29,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       storedCampaign={storedCampaign}
       campaigns={campaigns}
       storedProfile={storedProfile}
-      recentContent={recentContent}
-      recentContentCount={recentContentCount}
-      contentReadError={contentReadError}
+      recentContent={recentContentData.items}
+      recentContentCount={recentContentData.count}
+      contentReadError={recentContentData.error}
       selectedOffice={selectedOffice}
-      officeSceneType={selectedOffice?.sceneType ?? null}
+      officeSceneType={officeSceneType}
+      officeAgents={officeAgents}
       campaignDeletedNotice={campaignDeleted === "1"}
     />
   );

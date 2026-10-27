@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
+import { FloatingTopbar } from "@/components/dashboard/floating-topbar";
 
 type PlaceholderProps = {
   title: string;
@@ -16,12 +17,12 @@ export function DashboardPlaceholder({ title, description, icon: Icon, user, sto
     <div className="soto-layout">
       <DashboardSidebar user={user} storedCampaign={storedCampaign} campaigns={campaigns} profileName={profileName} />
       <div className="soto-main-wrapper">
-        <header className="soto-topbar">
+        <FloatingTopbar>
           <div className="soto-topbar-heading">
             <span className="soto-placeholder-eyebrow">WORKSPACE</span>
             <h1 className="soto-page-title">{title}</h1>
           </div>
-        </header>
+        </FloatingTopbar>
         <main className="soto-canvas soto-placeholder-canvas">
           <section className="soto-placeholder-card" aria-labelledby="placeholder-title">
             <span className="soto-placeholder-icon"><Icon size={24} strokeWidth={1.8} /></span>
