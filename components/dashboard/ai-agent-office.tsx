@@ -55,7 +55,7 @@ function isOfficeScene(value: unknown): value is OfficeScene {
     });
 }
 
-export function AiAgentOffice({ sceneType }: { sceneType: OfficeSceneType | null }) {
+export function AiAgentOffice({ sceneType, selectedAgentId, onAgentSelect, fillAvailableSpace = false }: { sceneType: OfficeSceneType | null; selectedAgentId?: string | null; onAgentSelect?: (agentId: string) => void; fillAvailableSpace?: boolean }) {
   const [scene, setScene] = useState<OfficeScene | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [panelSize, setPanelSize] = useState({ width: 0, height: 0 });
@@ -97,7 +97,7 @@ export function AiAgentOffice({ sceneType }: { sceneType: OfficeSceneType | null
   }, [sceneType]);
 
   useEffect(() => {
-    if (sceneType !== "modern" || status !== "ready" || !scene) return;
+    if (!(sceneType === "modern" || fillAvailableSpace) || status !== "ready" || !scene) return;
     const panel = scenePanelRef.current;
     if (!panel) return;
 
@@ -110,15 +110,16 @@ export function AiAgentOffice({ sceneType }: { sceneType: OfficeSceneType | null
     const observer = new ResizeObserver(measure);
     observer.observe(panel);
     return () => observer.disconnect();
-  }, [sceneType, status, scene]);
+  }, [sceneType, fillAvailableSpace, status, scene]);
 
-  const coverScale = scene && sceneType === "modern" && panelSize.width > 0 && panelSize.height > 0
+  const useCover = sceneType === "modern" || fillAvailableSpace;
+  const coverScale = scene && useCover && panelSize.width > 0 && panelSize.height > 0
     ? Math.max(panelSize.width / scene.width, panelSize.height / scene.height)
     : 1;
-  const coverOffsetX = scene && sceneType === "modern" && panelSize.width > 0
+  const coverOffsetX = scene && useCover && panelSize.width > 0
     ? (panelSize.width - scene.width * coverScale) / 2
     : 0;
-  const coverOffsetY = scene && sceneType === "modern" && panelSize.height > 0
+  const coverOffsetY = scene && useCover && panelSize.height > 0
     ? (panelSize.height - scene.height * coverScale) / 2
     : 0;
 
@@ -143,14 +144,14 @@ export function AiAgentOffice({ sceneType }: { sceneType: OfficeSceneType | null
       )}
       {status === "ready" && scene && (
         <div
-          className={`soto-agent-office-scene ${sceneType === "modern" ? "is-modern" : ""}`}
-          ref={sceneType === "modern" ? scenePanelRef : undefined}
+          className={`soto-agent-office-scene ${sceneType === "modern" ? "is-modern" : ""} ${fillAvailableSpace ? "is-cover" : ""}`}
+          ref={useCover ? scenePanelRef : undefined}
           role="group"
           aria-label={`${officeTitle} with ${scene.seats.length} AI agents at their desks`}
           style={sceneType === "modern" ? undefined : { aspectRatio: `${scene.width} / ${scene.height}` }}
         >
           <div
-            className={`soto-agent-office-scene-canvas ${sceneType === "modern" ? "is-modern" : ""}`}
+            className={`soto-agent-office-scene-canvas ${sceneType === "modern" ? "is-modern" : ""} ${fillAvailableSpace ? "is-cover" : ""}`}
             style={{
               aspectRatio: `${scene.width} / ${scene.height}`,
               backgroundImage: `url(${scene.background})`,
@@ -165,7 +166,9 @@ export function AiAgentOffice({ sceneType }: { sceneType: OfficeSceneType | null
                 coverOffsetX={coverOffsetX}
                 coverOffsetY={coverOffsetY}
                 panelSize={panelSize}
-                useCover={sceneType === "modern"}
+                useCover={useCover}
+                selected={selectedAgentId === seat.id}
+                onSelect={onAgentSelect}
               />
             ))}
           </div>
@@ -183,6 +186,8 @@ function OfficeCharacter({
   coverOffsetY,
   panelSize,
   useCover,
+  selected,
+  onSelect,
 }: {
   seat: OfficeSeat;
   scene: OfficeScene;
@@ -191,6 +196,8 @@ function OfficeCharacter({
   coverOffsetY: number;
   panelSize: { width: number; height: number };
   useCover: boolean;
+  selected: boolean;
+  onSelect?: (agentId: string) => void;
 }) {
   const frames = seat.character.frames;
   const [frameIndex, setFrameIndex] = useState(0);
@@ -224,13 +231,15 @@ function OfficeCharacter({
   const characterWidth = ((seat.width * coverScale) / frameWidth) * 100;
   const horizontalPlacement = centerX < 18 ? "is-left-aligned" : centerX > 82 ? "is-right-aligned" : "";
   const verticalPlacement = y < 17 ? "is-below" : "is-above";
+  const AgentElement = onSelect ? "button" : "span";
 
   return (
-    <span
-      className={`soto-agent-office-agent ${verticalPlacement} ${horizontalPlacement}`}
-      role="group"
-      aria-label={`${role}, ${seat.character.name}`}
-      tabIndex={0}
+    <AgentElement
+      {...(onSelect ? { type: "button" as const } : { role: "group", tabIndex: 0 })}
+      className={`soto-agent-office-agent ${verticalPlacement} ${horizontalPlacement} ${selected ? "is-selected" : ""}`}
+      aria-label={onSelect ? `Select ${role}` : role}
+      aria-pressed={onSelect ? selected : undefined}
+      onClick={onSelect ? () => onSelect(seat.id) : undefined}
       style={{
         left: `${x}%`,
         top: `${y}%`,
@@ -244,9 +253,8 @@ function OfficeCharacter({
         <span className="soto-agent-office-agent-icon" aria-hidden="true"><RoleIcon size={12} strokeWidth={2.2} /></span>
         <span className="soto-agent-office-agent-label">
           <strong>{role}</strong>
-          <small>{seat.character.name}</small>
         </span>
       </span>
-    </span>
+    </AgentElement>
   );
 }

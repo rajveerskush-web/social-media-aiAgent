@@ -22,6 +22,7 @@ export const config = {
     "/analytics/:path*",
     "/accounts/:path*",
     "/settings/:path*",
+    "/api/agent-chat/:path*",
     "/sign-in",
     "/sign-up",
   ],

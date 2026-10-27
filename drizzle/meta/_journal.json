@@ -22,6 +22,27 @@
       "when": 1792595010284,
       "tag": "0002_allow_multiple_campaigns",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792678157301,
+      "tag": "0003_nasty_susan_delgado",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792767042292,
+      "tag": "0004_master_agent",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793035220228,
+      "tag": "0005_master_agent_idempotency",
+      "breakpoints": true
     }
   ]
 }

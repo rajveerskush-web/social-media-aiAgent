@@ -16,9 +16,13 @@ import {
   Info,
   Plus,
   Target,
+  WandSparkles,
 } from "lucide-react";
 import { AiAgentOffice, type OfficeSceneType } from "@/components/dashboard/ai-agent-office";
+import { AiAgentsWorkspace } from "@/components/dashboard/ai-agents-workspace";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
+import { FloatingTopbar } from "@/components/dashboard/floating-topbar";
+import type { OfficeAgent } from "@/lib/office-agents";
 
 type DashboardProps = {
   user: {
@@ -60,6 +64,7 @@ type DashboardProps = {
     sceneType: OfficeSceneType;
   };
   officeSceneType: OfficeSceneType | null;
+  officeAgents: OfficeAgent[];
   campaignDeletedNotice?: boolean;
 };
 
@@ -73,9 +78,11 @@ export function SociafyDashboard({
   contentReadError,
   selectedOffice,
   officeSceneType,
+  officeAgents,
   campaignDeletedNotice = false,
 }: DashboardProps) {
   const [showContentModal, setShowContentModal] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
   const displayName =
     storedProfile?.name?.trim() || user.profile?.name?.trim() || user.email;
@@ -96,7 +103,7 @@ export function SociafyDashboard({
       {/* ===================== MAIN CONTENT WRAPPER ===================== */}
       <div className="soto-main-wrapper">
         {/* TOPBAR */}
-        <header className="soto-topbar">
+        <FloatingTopbar>
           <div className="soto-topbar-heading">
             <h1 className="soto-page-title">Overview</h1>
             <p className="soto-page-subtitle">A snapshot of your campaign at a glance</p>
@@ -125,17 +132,32 @@ export function SociafyDashboard({
               <span>Create post</span>
             </Link>
           </div>
-        </header>
+        </FloatingTopbar>
 
         {/* Dashboard Canvas */}
         <main className="soto-canvas soto-overview-canvas">
           {campaignDeletedNotice && <p className="soto-campaign-success-notice" role="status">Campaign deleted successfully.</p>}
           <div className="soto-overview-layout">
             <div className="soto-overview-primary">
+              {selectedAgentId ? (
+                <AiAgentsWorkspace
+                  key={selectedAgentId}
+                  mode="embedded"
+                  selectedAgentId={selectedAgentId}
+                  user={user}
+                  storedCampaign={storedCampaign}
+                  campaigns={campaigns}
+                  profileName={storedProfile?.name}
+                  agents={officeAgents}
+                  office={selectedOffice ? { title: selectedOffice.title, sceneType: selectedOffice.sceneType } : null}
+                />
+              ) : (
+                <>
               <header className="soto-overview-intro">
                 <p className="soto-overview-greeting">Good morning, {firstName}!</p>
                 <h2>Your AI Creative Team is on it.</h2>
                 <p>From trends to content to posting, your agents work together to turn ideas into real growth.</p>
+                <button type="button" className="soto-primary-btn soto-master-chat-cta" onClick={() => setSelectedAgentId("master-agent")}><WandSparkles size={16} /> Chat with Master Agent</button>
               </header>
 
               <section className="soto-overview-section" aria-label="Selected campaign">
@@ -242,9 +264,11 @@ export function SociafyDashboard({
                   <strong>{storedCampaign.name}</strong>
                 </span>
               </footer>
+                </>
+              )}
             </div>
             <div className={`soto-overview-office-column ${officeSceneType === "modern" ? "is-modern" : ""}`}>
-              <AiAgentOffice key={officeSceneType ?? "unavailable"} sceneType={officeSceneType} />
+              <AiAgentOffice key={officeSceneType ?? "unavailable"} sceneType={officeSceneType} selectedAgentId={selectedAgentId} onAgentSelect={setSelectedAgentId} />
             </div>
           </div>
         </main>
