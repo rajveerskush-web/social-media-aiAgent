@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Check, Sparkles } from "lucide-react";
+import { ArrowUpRight, Check, Eye, EyeOff, Sparkles } from "lucide-react";
 import { officeOptions } from "@/lib/campaign-options";
 import {
   signInWithEmail,
@@ -20,6 +20,8 @@ type AuthFormProps = {
 export function AuthForm({ mode, authError }: AuthFormProps) {
   const [error, setError] = useState(authError ?? "");
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [verification, setVerification] = useState<{ email: string } | null>(null);
   const isSignUp = mode === "sign-up";
   const featuredOffice = officeOptions[0];
@@ -132,10 +134,10 @@ export function AuthForm({ mode, authError }: AuthFormProps) {
                 : "Enter your details to continue to your dashboard."}
             </p>
 
-            <form action={startGoogleSignIn}>
-              <button className="auth-google" type="submit" disabled={busy}>
+            <form action={startGoogleSignIn} onSubmit={() => setGoogleBusy(true)}>
+              <button className="auth-google" type="submit" disabled={busy || googleBusy}>
                 <GoogleMark />
-                Continue with Google
+                {googleBusy ? "Redirecting to Google…" : "Continue with Google"}
               </button>
             </form>
 
@@ -160,15 +162,26 @@ export function AuthForm({ mode, authError }: AuthFormProps) {
               />
 
               <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete={isSignUp ? "new-password" : "current-password"}
-                placeholder={isSignUp ? "At least 6 characters" : "Your password"}
-                minLength={isSignUp ? 6 : undefined}
-                required
-              />
+              <div className="auth-password-wrap">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
+                  placeholder={isSignUp ? "At least 6 characters" : "Your password"}
+                  minLength={isSignUp ? 6 : undefined}
+                  required
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
 
               {error && <p className="auth-error" role="alert">{error}</p>}
               <button className="auth-submit" type="submit" disabled={busy}>

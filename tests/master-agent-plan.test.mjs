@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 import { describeInvalidMasterPlan, hasDelegationClaim, summarizeTaskStatuses, validateMasterPlan } from "../lib/master-agent-plan.ts";
 
@@ -56,9 +57,82 @@ test("reports useful reasons for invalid planner output without accepting invali
 test("does not mistake free text for persisted delegation and reports actual task states", () => {
   assert.equal(hasDelegationClaim("I delegated content strategy to the specialists."), true);
   assert.equal(hasDelegationClaim("I can help plan your campaign. What is your audience?"), false);
-  assert.match(summarizeTaskStatuses([
-    { title: "Research", status: "completed" },
-    { title: "Draft posts", status: "failed", error: "Specialist execution failed (timeout)." },
-    { title: "Propose schedule", status: "queued" },
-  ]), /1 completed, 1 queued, 1 failed/);
+  const summary = summarizeTaskStatuses([
+    { id: 1, title: "Research", status: "completed", assignedAgentId: "seat-1", response: "Three audience segments emerged from the supplied notes." },
+    { id: 2, title: "Draft posts", status: "failed", error: "Specialist execution failed (timeout)." },
+    { id: 3, title: "Propose schedule", status: "queued" },
+    { id: 4, title: "Review drafts", status: "blocked" },
+  ]);
+  assert.match(summary, /1 completed, 1 waiting to start, 1 waiting on prerequisite work, 1 not completed/);
+  assert.match(summary, /Three audience segments emerged from the supplied notes\./);
+  assert.match(summary, /Draft posts: Specialist execution failed \(timeout\)\./);
+  assert.match(summary, /Propose schedule.*queued/);
+  assert.match(summary, /Review drafts.*blocked/);
+});
+
+test("does not invent a result when a completed task has no saved specialist response", () => {
+  const summary = summarizeTaskStatuses([{ title: "Analyze campaign", status: "completed" }]);
+  assert.match(summary, /marked complete, but no specialist response was saved/);
+  assert.doesNotMatch(summary, /analysis shows|results indicate/i);
+});
+
+test("accepts task updates and passes new information to assigned agent without duplicate task creation", () => {
+  const result = validateMasterPlan(JSON.stringify({
+    clarification: "",
+    updatedTasks: [
+      { id: 42, additionalInstructions: "Focus specifically on specialty pour-over cafes with Gen Z branding." },
+    ],
+    tasks: [],
+    review: "I have updated the research assignment with your specific focus on specialty pour-over cafes.",
+  }), agentIds);
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.plan.updatedTasks.length, 1);
+    assert.equal(result.plan.updatedTasks[0].id, 42);
+    assert.match(result.plan.updatedTasks[0].additionalInstructions, /specialty pour-over/);
+    assert.equal(result.plan.tasks.length, 0); // No duplicate tasks
+  }
+});
+
+test("auto-maps task items with updateTaskId into updatedTasks", () => {
+  const result = validateMasterPlan(JSON.stringify({
+    tasks: [
+      {
+        updateTaskId: 55,
+        title: "Update competitor research",
+        instructions: "Add pricing tiers for iced drinks.",
+      },
+    ],
+  }), agentIds);
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.plan.updatedTasks.length, 1);
+    assert.equal(result.plan.updatedTasks[0].id, 55);
+    assert.equal(result.plan.updatedTasks[0].additionalInstructions, "Add pricing tiers for iced drinks.");
+    assert.equal(result.plan.tasks.length, 0); // Normalized to updatedTasks, avoiding duplicates
+  }
+});
+
+test("summarizeTaskStatuses formats updated tasks alongside new or existing tasks", () => {
+  const summary = summarizeTaskStatuses(
+    [],
+    true,
+    [{ id: 10, title: "Market Research", assignedAgentId: "Research Agent" }],
+  );
+  assert.match(summary, /updated 1 existing task.*#10 Market Research for Research Agent/);
+});
+
+test("agent instructions enforce selective browser policy for Research and Content Creator agents", () => {
+  const filePath = new URL("../lib/agent-instructions.ts", import.meta.url);
+  const content = fs.readFileSync(filePath, "utf-8");
+
+  // Research Agent: browse by default for latest external info, but confident answers without browsing permitted
+  assert.match(content, /use the browser by default to access the latest external information/i);
+  assert.match(content, /if you can answer confidently using your existing knowledge.*you do not need to browse every time/i);
+
+  // Content Creator Agent: browse for live campaign references, but confident creative copy without browsing permitted
+  assert.match(content, /use the browser through your cloud desktop sandbox to access the latest information/i);
+  assert.match(content, /if you can craft the requested creative copy.*confidently using existing knowledge.*you do not need to browse every time/i);
 });
