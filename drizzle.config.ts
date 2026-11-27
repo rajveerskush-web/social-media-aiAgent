@@ -5,14 +5,14 @@ import { defineConfig } from 'drizzle-kit';
 // already provided by the process or deployment environment.
 loadEnvConfig(process.cwd());
 
-const databaseUrl = process.env.NEON_DATABASE_URL;
+const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 if (!databaseUrl) {
-  throw new Error('NEON_DATABASE_URL must be set before running Drizzle commands.');
+  throw new Error('NEON_DATABASE_URL or DATABASE_URL must be set before running Drizzle commands.');
 }
 
 const databaseHost = new URL(databaseUrl).hostname;
 if (!databaseHost.endsWith('.neon.tech')) {
-  throw new Error('NEON_DATABASE_URL must point to a Neon PostgreSQL host.');
+  throw new Error('Database connection URL must point to a Neon PostgreSQL host.');
 }
 
 export default defineConfig({

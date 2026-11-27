@@ -71,15 +71,27 @@ export async function getCampaignForAuthUser(authUserId: string) {
 
 /** Load protected workspace data after one verified session lookup. */
 export async function getAuthenticatedWorkspaceData() {
-  const user = await getAuthenticatedUser();
+  const insforge = await createInsForgeServerClient();
+  const { data, error } = await insforge.auth.getCurrentUser();
+  const user = error ? null : data.user;
   if (!user?.id) return { user: null, storedCampaign: null, campaigns: [], storedProfile: null };
 
   const cookieStore = await cookies();
   const requestedId = Number(cookieStore.get(CURRENT_CAMPAIGN_COOKIE)?.value);
-  const [campaigns, storedProfile] = await Promise.all([
+  let [campaigns, storedProfile] = await Promise.all([
     getCampaignsForAuthUser(user.id),
     getProfileForAuthUser(user.id),
   ]);
+
+  // Self-heal: if the InsForge session is valid but the Neon users row is missing,
+  // safely recreate it on the server before rendering protected workspace pages.
+  if (!storedProfile) {
+    const syncResult = await persistAuthenticatedUserProfile(insforge);
+    if (!syncResult.error) {
+      storedProfile = await getProfileForAuthUser(user.id);
+    }
+  }
+
   const storedCampaign = campaigns.find((item) => item.id === requestedId) ?? campaigns[0] ?? null;
   return { user, storedCampaign, campaigns, storedProfile };
 }
@@ -132,8 +144,13 @@ export async function persistAuthenticatedUserProfile(
   };
 
   try {
-    // Conflict resolution by verified InsForge UUID makes signup, verification,
-    // OAuth callbacks, and later sign-ins safe to repeat.
+    // Check existing record by verified authUserId first; upsert safely handles
+    // concurrent sign-ups/OAuth callbacks without creating duplicate rows.
+    const existing = await getProfileForAuthUser(user.id);
+    if (existing && existing.email === profile.email && (!normalizedName || existing.name === normalizedName)) {
+      return { error: null };
+    }
+
     await getDb()
       .insert(users)
       .values(profile)
@@ -146,6 +163,13 @@ export async function persistAuthenticatedUserProfile(
       });
     return { error: null };
   } catch (error) {
+    const code = (error as { code?: string; cause?: { code?: string } })?.code
+      ?? (error as { cause?: { code?: string } })?.cause?.code;
+    if (code === "23505") {
+      return {
+        error: new Error("An account with this email already exists under a different authentication ID."),
+      };
+    }
     return {
       error: error instanceof Error ? error : new Error("Unable to save the user profile in Neon."),
     };

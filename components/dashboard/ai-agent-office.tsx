@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BarChart3, CalendarDays, LoaderCircle, PenLine, Search, Sparkles } from "lucide-react";
+import type { AgentActivityData } from "@/lib/agent-activity";
+import { AgentActivityPopover, formatExecutionStatus } from "@/components/dashboard/agent-activity-popover";
 
 export type OfficeSceneType = "wooden" | "modern";
 
@@ -55,7 +57,19 @@ function isOfficeScene(value: unknown): value is OfficeScene {
     });
 }
 
-export function AiAgentOffice({ sceneType, selectedAgentId, onAgentSelect, fillAvailableSpace = false }: { sceneType: OfficeSceneType | null; selectedAgentId?: string | null; onAgentSelect?: (agentId: string) => void; fillAvailableSpace?: boolean }) {
+export function AiAgentOffice({
+  sceneType,
+  selectedAgentId,
+  onAgentSelect,
+  fillAvailableSpace = false,
+  activities,
+}: {
+  sceneType: OfficeSceneType | null;
+  selectedAgentId?: string | null;
+  onAgentSelect?: (agentId: string) => void;
+  fillAvailableSpace?: boolean;
+  activities?: Record<string, AgentActivityData>;
+}) {
   const [scene, setScene] = useState<OfficeScene | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [panelSize, setPanelSize] = useState({ width: 0, height: 0 });
@@ -169,6 +183,7 @@ export function AiAgentOffice({ sceneType, selectedAgentId, onAgentSelect, fillA
                 useCover={useCover}
                 selected={selectedAgentId === seat.id}
                 onSelect={onAgentSelect}
+                activity={activities?.[seat.id]}
               />
             ))}
           </div>
@@ -188,6 +203,7 @@ function OfficeCharacter({
   useCover,
   selected,
   onSelect,
+  activity,
 }: {
   seat: OfficeSeat;
   scene: OfficeScene;
@@ -198,6 +214,7 @@ function OfficeCharacter({
   useCover: boolean;
   selected: boolean;
   onSelect?: (agentId: string) => void;
+  activity?: AgentActivityData;
 }) {
   const frames = seat.character.frames;
   const [frameIndex, setFrameIndex] = useState(0);
@@ -229,17 +246,15 @@ function OfficeCharacter({
   const centerX = (((seat.x + seat.width / 2) * coverScale + (useCover ? coverOffsetX : 0)) / frameWidth) * 100;
   const y = ((seat.y * coverScale + (useCover ? coverOffsetY : 0)) / frameHeight) * 100;
   const characterWidth = ((seat.width * coverScale) / frameWidth) * 100;
-  const horizontalPlacement = centerX < 18 ? "is-left-aligned" : centerX > 82 ? "is-right-aligned" : "";
-  const verticalPlacement = y < 17 ? "is-below" : "is-above";
-  const AgentElement = onSelect ? "button" : "span";
+  const horizontalPlacement = centerX < 20 ? "is-left-aligned" : centerX > 80 ? "is-right-aligned" : "";
+  const verticalPlacement = y < 22 ? "is-below" : "is-above";
+
+  const execStatus = activity?.executionStatus ?? "ready";
+  const { label: statusLabel, cssClass: statusClass } = formatExecutionStatus(execStatus);
 
   return (
-    <AgentElement
-      {...(onSelect ? { type: "button" as const } : { role: "group", tabIndex: 0 })}
+    <div
       className={`soto-agent-office-agent ${verticalPlacement} ${horizontalPlacement} ${selected ? "is-selected" : ""}`}
-      aria-label={onSelect ? `Select ${role}` : role}
-      aria-pressed={onSelect ? selected : undefined}
-      onClick={onSelect ? () => onSelect(seat.id) : undefined}
       style={{
         left: `${x}%`,
         top: `${y}%`,
@@ -248,13 +263,38 @@ function OfficeCharacter({
         zIndex: seat.zIndex,
       }}
     >
-      <img className="soto-agent-office-character" src={frame} alt="" aria-hidden="true" draggable={false} />
-      <span className="soto-agent-office-agent-popover">
-        <span className="soto-agent-office-agent-icon" aria-hidden="true"><RoleIcon size={12} strokeWidth={2.2} /></span>
-        <span className="soto-agent-office-agent-label">
-          <strong>{role}</strong>
-        </span>
-      </span>
-    </AgentElement>
+      <img
+        className="soto-agent-office-character"
+        src={frame}
+        alt={role}
+        draggable={false}
+        onClick={onSelect ? () => onSelect(seat.id) : undefined}
+        style={{ cursor: onSelect ? "pointer" : "default" }}
+      />
+      <div className="soto-agent-office-popover-anchor">
+        <AgentActivityPopover
+          agentId={seat.id}
+          agentRole={role}
+          agentName={seat.character.name}
+          activity={activity}
+          onSelect={onSelect}
+          placement={y < 50 ? "bottom" : "top"}
+        >
+          <div className={`soto-agent-office-floating-badge ${statusClass}`} role="status">
+            <span className="soto-floating-badge-dot" />
+            <span className="soto-floating-badge-role">{role}</span>
+            {execStatus === "running" && (
+              <span className="soto-floating-badge-detail">Working…</span>
+            )}
+            {execStatus === "waiting_for_user" && (
+              <span className="soto-floating-badge-detail is-wait">Waiting</span>
+            )}
+            {execStatus === "completed" && (
+              <span className="soto-floating-badge-detail is-done">Done</span>
+            )}
+          </div>
+        </AgentActivityPopover>
+      </div>
+    </div>
   );
 }

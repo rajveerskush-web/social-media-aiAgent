@@ -1,4 +1,3 @@
-import "server-only";
 import { GoogleGenAI } from "@google/genai";
 
 let client: GoogleGenAI | undefined;
@@ -11,10 +10,17 @@ export function getGeminiClient() {
   return client;
 }
 
-export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+export function getGeminiModel(): string {
+  return process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+}
 
-// Keep one Gemini attempt within the route's response budget. The chat UI has
-// an explicit retry action for transient failures, so the SDK must not hide
-// several unbounded retries inside a single request.
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+
+// Bound the provider retry budget: one retry for transient HTTP or connection
+// failures, with the route's timeout still applying to each attempt.
 export const GEMINI_REQUEST_TIMEOUT_MS = 25_000;
+export const GEMINI_REQUEST_OPTIONS = {
+  timeout_ms: GEMINI_REQUEST_TIMEOUT_MS,
+  retries: { strategy: "attempt-count-backoff", maxRetries: 1, retryConnectionErrors: true },
+} as const;
 
